@@ -28,7 +28,8 @@ function S3Image({
   // PSA와 완전히 동일한 이미지 로드 로직
   useEffect(() => {
     let blobUrlToCleanup: string | null = null;
-    
+    let hasTriedProxy = false; // 프록시 재시도 플래그
+
     const loadImage = async () => {
       const img = new Image();
       let finalImageUrl = src;
@@ -132,13 +133,38 @@ function S3Image({
       console.log('S3Image - Final image URL:', finalImageUrl.substring(0, 100) + '...');
       console.log('S3Image - Final URL length:', finalImageUrl.length);
 
-      // CORS 설정 (Data URL은 CORS 불필요)
-      if (!finalImageUrl.startsWith('data:')) {
+      // S3 URL이나 Pre-signed URL인 경우 처음부터 프록시 사용
+      const isS3OrPreSigned = finalImageUrl.includes('s3.amazonaws.com') || finalImageUrl.includes('X-Amz-Signature');
+
+      if (isS3OrPreSigned && !finalImageUrl.startsWith('blob:')) {
+        console.log('S3/Pre-signed URL 감지, 프록시를 통해 로드합니다...');
+
+        try {
+          const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
+          const response = await fetch(proxyUrl);
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            blobUrlToCleanup = blobUrl;
+
+            console.log('프록시를 통한 이미지 로드 성공, Blob URL 생성:', blobUrl);
+            finalImageUrl = blobUrl;
+          } else {
+            console.error('프록시를 통한 이미지 로드 실패, 직접 접근 시도:', response.status);
+          }
+        } catch (proxyError) {
+          console.error('프록시 요청 중 오류, 직접 접근 시도:', proxyError);
+        }
+      }
+
+      // CORS 설정 (Data URL과 Blob URL은 CORS 불필요)
+      if (!finalImageUrl.startsWith('data:') && !finalImageUrl.startsWith('blob:')) {
         img.crossOrigin = 'anonymous';
       }
 
-      // PSA와 동일한 에러 처리
-      img.onerror = (error) => {
+      // PSA와 동일한 에러 처리 + 프록시 폴백
+      img.onerror = async (error) => {
         console.error('=== S3Image Error Debug ===');
         console.error('S3Image 이미지 로드 실패:', error);
         console.error('Failed URL:', finalImageUrl.substring(0, 100) + '...');
@@ -151,9 +177,35 @@ function S3Image({
           isBlobUrl: finalImageUrl.startsWith('blob:')
         });
 
-        // PSA와 동일한 재시도 로직 (한 번만)
-        if (img.crossOrigin) {
-          console.log('CORS 에러로 추정, 재시도 중...');
+        // CORS 에러 또는 S3 접근 실패 시 프록시 사용
+        if (!hasTriedProxy && (finalImageUrl.includes('s3.amazonaws.com') || finalImageUrl.includes('X-Amz-Signature'))) {
+          console.log('CORS 에러로 추정, 프록시를 통해 재시도 중...');
+          hasTriedProxy = true;
+
+          try {
+            // 프록시를 통해 이미지를 Blob으로 가져오기
+            const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
+            const response = await fetch(proxyUrl);
+
+            if (response.ok) {
+              const blob = await response.blob();
+              const blobUrl = URL.createObjectURL(blob);
+              if (blobUrlToCleanup) URL.revokeObjectURL(blobUrlToCleanup);
+              blobUrlToCleanup = blobUrl;
+
+              console.log('프록시를 통한 이미지 로드 성공, Blob URL 생성:', blobUrl);
+              img.crossOrigin = undefined as any; // Blob URL은 CORS 불필요
+              img.src = blobUrl;
+            } else {
+              console.error('프록시를 통한 이미지 로드 실패:', response.status);
+              setError(true);
+            }
+          } catch (proxyError) {
+            console.error('프록시 요청 중 오류:', proxyError);
+            setError(true);
+          }
+        } else if (img.crossOrigin) {
+          console.log('CORS 설정 제거 후 재시도 중...');
           img.crossOrigin = null;
           img.src = finalImageUrl + (finalImageUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now();
         } else {
