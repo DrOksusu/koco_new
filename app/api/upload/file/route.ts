@@ -59,8 +59,23 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error uploading file:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorDetails = {
+      message: errorMessage,
+      name: error instanceof Error ? error.name : 'Error',
+      // AWS SDK 에러인 경우 추가 정보 포함
+      ...(error && typeof error === 'object' && '$metadata' in error ? {
+        statusCode: (error as any).$metadata?.httpStatusCode,
+        requestId: (error as any).$metadata?.requestId,
+      } : {})
+    };
+
     return NextResponse.json(
-      { error: 'Failed to upload file', details: error },
+      {
+        error: 'Failed to upload file',
+        message: errorMessage,
+        details: errorDetails
+      },
       { status: 500 }
     );
   }

@@ -568,7 +568,7 @@ export default function DashboardPage() {
           if (uploadResponse.ok) {
             const uploadResult = await uploadResponse.json();
             const s3Url = uploadResult.s3Url;
-            
+
             console.log('Dashboard - Landmark file uploaded to S3:', {
               s3Url,
               fileName: file.name,
@@ -592,8 +592,13 @@ export default function DashboardPage() {
               alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
             }
           } else {
-            console.error('Failed to upload Landmark file to S3');
-            alert('파일 업로드에 실패했습니다.');
+            const errorData = await uploadResponse.json().catch(() => ({}));
+            console.error('Failed to upload Landmark file to S3:', {
+              status: uploadResponse.status,
+              statusText: uploadResponse.statusText,
+              error: errorData
+            });
+            alert(`파일 업로드에 실패했습니다.\n상태: ${uploadResponse.status}\n${errorData.error || errorData.message || '알 수 없는 오류'}`);
           }
         } catch (error) {
           console.error('Error uploading Landmark file:', error);

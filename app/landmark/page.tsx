@@ -172,7 +172,7 @@ export default function LandmarkPage() {
         setTimeout(() => {
           const utterance = new SpeechSynthesisUtterance(LANDMARKS[0]);
           utterance.lang = 'ko-KR';
-          utterance.rate = 1.5;
+          utterance.rate = 2.34;
           speechSynthesis.speak(utterance);
         }, 500);
       }
@@ -205,7 +205,7 @@ export default function LandmarkPage() {
     if (nextIndex < LANDMARKS.length && 'speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(LANDMARKS[nextIndex]);
       utterance.lang = 'ko-KR';
-      utterance.rate = 0.9;
+      utterance.rate = 1.4;
       speechSynthesis.speak(utterance);
     }
   };
@@ -249,7 +249,7 @@ export default function LandmarkPage() {
       if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(LANDMARKS[0]);
         utterance.lang = 'ko-KR';
-        utterance.rate = 0.9;
+        utterance.rate = 1.4;
         speechSynthesis.speak(utterance);
       }
     }

@@ -562,6 +562,7 @@ export default function LandmarkCanvas({
         }
       `}</style>
       <canvas
+        id="landmarkCanvas"
         ref={canvasRef}
         onClick={handleCanvasClick}
         onMouseMove={handleMouseMove}
