@@ -1,0 +1,44 @@
+{
+  "title": "KOCO 자동화 진단 사이트",
+  "subtitle": "(PSA, PSO)",
+  "hero": {
+    "description": "최첨단 자동화 진단 시스템으로 PSA(Park's Schematic Analysis)와 PSO(Park's Schematic Occlusion) 분석을 빠르고 정확하게 수행하세요",
+    "startButton": "진단 시작하기",
+    "learnMore": "더 알아보기"
+  },
+  "features": {
+    "title": "주요 기능",
+    "psa": {
+      "title": "PSA 분석",
+      "description": "Park's Schematic Analysis를 통해 두부계측학적 분석을 빠르고 정확하게 수행합니다."
+    },
+    "pso": {
+      "title": "PSO 분석",
+      "description": "Park's Schematic Occlusion을 통해 교합 분석을 체계적으로 수행합니다."
+    },
+    "report": {
+      "title": "실시간 리포트",
+      "description": "분석 결과를 실시간으로 확인하고 상세한 리포트를 다양한 형식으로 다운로드할 수 있습니다."
+    }
+  },
+  "process": {
+    "title": "진단 프로세스",
+    "step1": {
+      "title": "데이터 업로드",
+      "description": "분석할 공정 데이터를 업로드"
+    },
+    "step2": {
+      "title": "자동 분석",
+      "description": "AI 기반 자동화 진단 수행"
+    },
+    "step3": {
+      "title": "결과 확인",
+      "description": "상세 분석 결과 및 개선안 확인"
+    }
+  },
+  "cta": {
+    "title": "지금 바로 시작하세요",
+    "description": "KOCO 자동화 진단 시스템으로 공정의 안전성과 효율성을 한 단계 높이세요",
+    "button": "무료 체험 시작하기"
+  }
+}

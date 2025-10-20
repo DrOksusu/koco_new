@@ -1,0 +1,44 @@
+{
+  "title": "KOCO 自動診断サイト",
+  "subtitle": "(PSA, PSO)",
+  "hero": {
+    "description": "最先端の自動診断システムでPSA（Park's Schematic Analysis）とPSO（Park's Schematic Occlusion）分析を迅速かつ正確に実行します",
+    "startButton": "診断を開始",
+    "learnMore": "詳細を見る"
+  },
+  "features": {
+    "title": "主な機能",
+    "psa": {
+      "title": "PSA 分析",
+      "description": "Park's Schematic Analysisにより頭部計測分析を迅速かつ正確に実行します。"
+    },
+    "pso": {
+      "title": "PSO 分析",
+      "description": "Park's Schematic Occlusionにより咬合分析を体系的に実行します。"
+    },
+    "report": {
+      "title": "リアルタイムレポート",
+      "description": "分析結果をリアルタイムで確認し、詳細なレポートを様々な形式でダウンロードできます。"
+    }
+  },
+  "process": {
+    "title": "診断プロセス",
+    "step1": {
+      "title": "データアップロード",
+      "description": "分析するプロセスデータをアップロード"
+    },
+    "step2": {
+      "title": "自動分析",
+      "description": "AIベースの自動診断を実行"
+    },
+    "step3": {
+      "title": "結果確認",
+      "description": "詳細な分析結果と改善案を確認"
+    }
+  },
+  "cta": {
+    "title": "今すぐ始めましょう",
+    "description": "KOCOの自動診断システムでプロセスの安全性と効率を次のレベルへ",
+    "button": "無料トライアル開始"
+  }
+}

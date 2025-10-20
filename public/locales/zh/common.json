@@ -1,0 +1,44 @@
+{
+  "title": "KOCO 自动化诊断网站",
+  "subtitle": "(PSA, PSO)",
+  "hero": {
+    "description": "使用尖端自动化诊断系统快速准确地执行PSA（Park's Schematic Analysis）和PSO（Park's Schematic Occlusion）分析",
+    "startButton": "开始诊断",
+    "learnMore": "了解更多"
+  },
+  "features": {
+    "title": "主要功能",
+    "psa": {
+      "title": "PSA 分析",
+      "description": "通过Park's Schematic Analysis快速准确地进行头部测量分析。"
+    },
+    "pso": {
+      "title": "PSO 分析",
+      "description": "通过Park's Schematic Occlusion系统地进行咬合分析。"
+    },
+    "report": {
+      "title": "实时报告",
+      "description": "实时查看分析结果并以各种格式下载详细报告。"
+    }
+  },
+  "process": {
+    "title": "诊断流程",
+    "step1": {
+      "title": "数据上传",
+      "description": "上传要分析的过程数据"
+    },
+    "step2": {
+      "title": "自动分析",
+      "description": "基于AI的自动诊断"
+    },
+    "step3": {
+      "title": "查看结果",
+      "description": "查看详细分析结果和改进方案"
+    }
+  },
+  "cta": {
+    "title": "立即开始",
+    "description": "使用KOCO自动化诊断系统将您的过程安全性和效率提升到新的水平",
+    "button": "开始免费试用"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "title": "KOCO Automated Diagnostic Site",
+  "subtitle": "(PSA, PSO)",
+  "hero": {
+    "description": "Perform PSA (Park's Schematic Analysis) and PSO (Park's Schematic Occlusion) analysis quickly and accurately with our cutting-edge automated diagnostic system",
+    "startButton": "Start Diagnosis",
+    "learnMore": "Learn More"
+  },
+  "features": {
+    "title": "Key Features",
+    "psa": {
+      "title": "PSA Analysis",
+      "description": "Perform cephalometric analysis quickly and accurately with Park's Schematic Analysis."
+    },
+    "pso": {
+      "title": "PSO Analysis",
+      "description": "Systematically perform occlusal analysis with Park's Schematic Occlusion."
+    },
+    "report": {
+      "title": "Real-time Reports",
+      "description": "View analysis results in real-time and download detailed reports in various formats."
+    }
+  },
+  "process": {
+    "title": "Diagnostic Process",
+    "step1": {
+      "title": "Data Upload",
+      "description": "Upload process data to analyze"
+    },
+    "step2": {
+      "title": "Automated Analysis",
+      "description": "AI-based automated diagnosis"
+    },
+    "step3": {
+      "title": "View Results",
+      "description": "Check detailed analysis results and improvements"
+    }
+  },
+  "cta": {
+    "title": "Get Started Now",
+    "description": "Take your process safety and efficiency to the next level with KOCO's automated diagnostic system",
+    "button": "Start Free Trial"
+  }
+}

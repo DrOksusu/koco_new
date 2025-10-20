@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Clinic {
+  id            BigInt         @id @default(autoincrement())
+  clinicName    String         @map("clinic_name") @db.VarChar(255)
+  clinicCode    String         @unique(map: "clinic_code") @map("clinic_code") @db.VarChar(100)
+  address       String?        @db.Text
+  phone         String?        @db.VarChar(50)
+  licenseNumber String?        @map("license_number") @db.VarChar(100)
+  createdAt     DateTime?      @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt     DateTime?      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  patients      Patient[]
+  users         User[]
+  xrayAnalyses  XrayAnalysis[]
+
+  @@index([clinicCode], map: "idx_clinic_code")
+  @@map("clinics")
+}
+
+model User {
+  id              BigInt            @id @default(autoincrement())
+  email           String            @unique(map: "email") @db.VarChar(255)
+  username        String            @db.VarChar(100)
+  passwordHash    String            @map("password_hash") @db.VarChar(255)
+  role            UserRole?         @default(staff)
+  clinicId        BigInt?           @map("clinic_id")
+  createdAt       DateTime?         @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt       DateTime?         @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  lastLoginAt     DateTime?         @map("last_login_at") @db.Timestamp(0)
+  isActive        Boolean?          @default(true) @map("is_active")
+  analysisHistory AnalysisHistory[]
+  exportLogs      ExportLog[]
+  patients        Patient[]
+  clinic          Clinic?           @relation(fields: [clinicId], references: [id], onUpdate: NoAction, map: "users_ibfk_1")
+  xrayAnalyses    XrayAnalysis[]
+
+  @@index([clinicId], map: "idx_clinic_id")
+  @@index([email], map: "idx_email")
+  @@map("users")
+}
+
+model Patient {
+  id               BigInt         @id @default(autoincrement())
+  patientCode      String         @unique(map: "patient_code") @map("patient_code") @db.VarChar(100)
+  patientName      String         @map("patient_name") @db.VarChar(100)
+  patientBirthDate DateTime       @map("patient_birth_date") @db.Date
+  gender           Gender
+  phone            String?        @db.VarChar(50)
+  address          String?        @db.Text
+  clinicId         BigInt         @map("clinic_id")
+  createdBy        BigInt?        @map("created_by")
+  createdAt        DateTime?      @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt        DateTime?      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  clinic           Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "patients_ibfk_1")
+  creator          User?          @relation(fields: [createdBy], references: [id], onUpdate: NoAction, map: "patients_ibfk_2")
+  xrayAnalyses     XrayAnalysis[]
+
+  @@index([createdBy], map: "created_by")
+  @@index([clinicId], map: "idx_clinic_id")
+  @@index([patientCode], map: "idx_patient_code")
+  @@index([patientName], map: "idx_patient_name")
+  @@map("patients")
+}
+
+model XrayAnalysis {
+  id                BigInt             @id @default(autoincrement())
+  analysisCode      String             @unique(map: "analysis_code") @map("analysis_code") @db.VarChar(100)
+  userId            BigInt             @map("user_id")
+  clinicId          BigInt             @map("clinic_id")
+  patientId         BigInt?            @map("patient_id")
+  patientName       String             @map("patient_name") @db.VarChar(100)
+  patientBirthDate  DateTime?          @map("patient_birth_date") @db.Date
+  xrayType          XrayType?          @default(lateral) @map("xray_type")
+  originalImageUrl  String?            @map("original_image_url") @db.Text
+  annotatedImageUrl String?            @map("annotated_image_url") @db.Text
+  fileName          String?            @map("file_name") @db.VarChar(255)
+  analysisStatus    AnalysisStatus?    @default(in_progress) @map("analysis_status")
+  diagnosisNotes    String?            @map("diagnosis_notes") @db.Text
+  createdAt         DateTime?          @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt         DateTime?          @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  analyzedAt        DateTime?          @map("analyzed_at") @db.Timestamp(0)
+  landmarksData     Json?              @map("landmarks_data")
+  anglesData        Json?              @map("angles_data")
+  analysisHistory   AnalysisHistory[]
+  exportLogs        ExportLog[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "xray_analyses_ibfk_1")
+  clinic            Clinic             @relation(fields: [clinicId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "xray_analyses_ibfk_2")
+  patient           Patient?           @relation(fields: [patientId], references: [id], onUpdate: NoAction, map: "xray_analyses_ibfk_3")
+
+  @@index([clinicId], map: "clinic_id")
+  @@index([analysisCode], map: "idx_analysis_code")
+  @@index([analysisStatus], map: "idx_analysis_status")
+  @@index([createdAt], map: "idx_created_at")
+  @@index([patientId], map: "idx_patient_id")
+  @@index([userId], map: "idx_user_id")
+  @@map("xray_analyses")
+}
+
+
+model AnalysisHistory {
+  id          BigInt        @id @default(autoincrement())
+  analysisId  BigInt?       @map("analysis_id")
+  userId      BigInt        @map("user_id")
+  actionType  ActionType    @map("action_type")
+  description String?       @db.Text
+  ipAddress   String?       @map("ip_address") @db.VarChar(45)
+  createdAt   DateTime?     @default(now()) @map("created_at") @db.Timestamp(0)
+  result      Json?
+  status      String?       @db.VarChar(50)
+  title       String?       @db.VarChar(255)
+  type        String?       @db.VarChar(50)
+  analysis    XrayAnalysis? @relation(fields: [analysisId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "analysis_history_ibfk_1")
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "analysis_history_ibfk_2")
+
+  @@index([analysisId], map: "idx_analysis_id")
+  @@index([createdAt], map: "idx_created_at")
+  @@index([userId], map: "idx_user_id")
+  @@map("analysis_history")
+}
+
+model ExportLog {
+  id           BigInt        @id @default(autoincrement())
+  analysisId   BigInt        @map("analysis_id")
+  userId       BigInt        @map("user_id")
+  exportFormat ExportFormat? @default(excel) @map("export_format")
+  fileSize     Int?          @map("file_size")
+  createdAt    DateTime?     @default(now()) @map("created_at") @db.Timestamp(0)
+  analysis     XrayAnalysis  @relation(fields: [analysisId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "export_logs_ibfk_1")
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "export_logs_ibfk_2")
+
+  @@index([analysisId], map: "idx_analysis_id")
+  @@index([createdAt], map: "idx_created_at")
+  @@index([userId], map: "idx_user_id")
+  @@map("export_logs")
+}
+
+enum UserRole {
+  admin
+  doctor
+  staff
+}
+
+enum Gender {
+  M
+  F
+}
+
+enum XrayType {
+  lateral
+  frontal
+  panoramic
+}
+
+enum AnalysisStatus {
+  in_progress
+  completed
+  failed
+}
+
+enum ActionType {
+  created
+  modified
+  exported
+  deleted
+}
+
+enum ExportFormat {
+  excel
+  pdf
+  csv
+}
