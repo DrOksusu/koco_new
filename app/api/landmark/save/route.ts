@@ -5,6 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
+      analysisId, // 업데이트용 ID (있으면 업데이트, 없으면 생성)
       fileName,
       landmarks,
       angles,
@@ -16,6 +17,8 @@ export async function POST(request: NextRequest) {
     } = body;
 
     console.log('Received API request with data:', {
+      analysisId: analysisId || 'NEW',
+      mode: analysisId ? 'UPDATE' : 'CREATE',
       fileName,
       landmarkCount: landmarks ? Object.keys(landmarks).length : 0,
       angleCount: angles ? Object.keys(angles).length : 0,
@@ -75,9 +78,6 @@ export async function POST(request: NextRequest) {
     const userId = BigInt(1); // BigInt
     const clinicId = BigInt(1); // BigInt
 
-    // Generate unique analysis code
-    const analysisCode = `XRAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
     // URL에서 query parameters 제거 (pre-signed URL 파라미터 제거)
     const cleanUrl = (url: string | undefined | null): string | null => {
       if (!url) return null;
@@ -85,34 +85,110 @@ export async function POST(request: NextRequest) {
       return url.split('?')[0];
     };
 
-    // Create main analysis record with JSON data
-    const analysis = await prisma.xrayAnalysis.create({
-      data: {
-        analysisCode,
-        userId,
-        clinicId,
-        patientName: patientName || 'Unknown Patient',
-        patientBirthDate: patientBirthDate ? new Date(patientBirthDate) : null,
-        xrayType: 'lateral',
-        originalImageUrl: cleanUrl(originalImageUrl || imageUrl), // 원본 이미지 URL (query params 제거)
-        annotatedImageUrl: cleanUrl(annotatedImageUrl || imageUrl), // 랜드마크가 그려진 이미지 URL (query params 제거)
-        fileName,
-        analysisStatus: 'completed',
-        analyzedAt: new Date(),
-        landmarksData: landmarks, // JSON 형태로 저장
-        anglesData: angles || {}, // JSON 형태로 저장
-      },
-    });
+    let analysis;
+    let existingAnalysis = null;
 
-    // Create history entry
-    await prisma.analysisHistory.create({
-      data: {
-        analysisId: analysis.id,
-        userId,
-        actionType: 'created',
-        description: 'Analysis created and completed',
-      },
-    });
+    // 1단계: sessionStorage의 analysisId로 먼저 확인
+    if (analysisId) {
+      existingAnalysis = await prisma.xrayAnalysis.findUnique({
+        where: { id: BigInt(analysisId) }
+      });
+
+      if (existingAnalysis) {
+        console.log('✅ Found analysis by analysisId:', analysisId);
+      }
+    }
+
+    // 2단계: sessionStorage에 없으면 환자 이름+생년월일로 조회
+    if (!existingAnalysis && patientName && patientBirthDate) {
+      console.log('🔍 Searching for existing analysis by patient info:', {
+        patientName,
+        patientBirthDate
+      });
+
+      existingAnalysis = await prisma.xrayAnalysis.findFirst({
+        where: {
+          userId,
+          patientName,
+          patientBirthDate: new Date(patientBirthDate)
+        },
+        orderBy: { createdAt: 'desc' } // 가장 최근 분석
+      });
+
+      if (existingAnalysis) {
+        console.log('✅ Found existing analysis for patient:', {
+          analysisId: existingAnalysis.id.toString(),
+          analysisCode: existingAnalysis.analysisCode,
+          createdAt: existingAnalysis.createdAt
+        });
+      }
+    }
+
+    // 3단계: UPDATE or CREATE
+    if (existingAnalysis) {
+      // UPDATE 모드 - 기존 분석 업데이트
+      console.log('🔄 Updating existing analysis:', existingAnalysis.id.toString());
+
+      analysis = await prisma.xrayAnalysis.update({
+        where: { id: existingAnalysis.id },
+        data: {
+          patientName: patientName || 'Unknown Patient',
+          patientBirthDate: patientBirthDate ? new Date(patientBirthDate) : null,
+          annotatedImageUrl: cleanUrl(annotatedImageUrl || imageUrl), // 랜드마크 이미지만 업데이트
+          fileName,
+          analyzedAt: new Date(),
+          landmarksData: landmarks, // JSON 형태로 저장
+          anglesData: angles || {}, // JSON 형태로 저장
+        },
+      });
+
+      // Update history entry
+      await prisma.analysisHistory.create({
+        data: {
+          analysisId: analysis.id,
+          userId,
+          actionType: 'updated',
+          description: 'Landmark analysis updated',
+        },
+      });
+
+      console.log('✅ Analysis updated successfully');
+    } else {
+      // CREATE 모드 - 새 분석 생성
+      console.log('➕ Creating new analysis for patient:', patientName);
+
+      const analysisCode = `XRAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      analysis = await prisma.xrayAnalysis.create({
+        data: {
+          analysisCode,
+          userId,
+          clinicId,
+          patientName: patientName || 'Unknown Patient',
+          patientBirthDate: patientBirthDate ? new Date(patientBirthDate) : null,
+          xrayType: 'lateral',
+          originalImageUrl: cleanUrl(originalImageUrl || imageUrl), // 원본 이미지 URL (query params 제거)
+          annotatedImageUrl: cleanUrl(annotatedImageUrl || imageUrl), // 랜드마크가 그려진 이미지 URL (query params 제거)
+          fileName,
+          analysisStatus: 'completed',
+          analyzedAt: new Date(),
+          landmarksData: landmarks, // JSON 형태로 저장
+          anglesData: angles || {}, // JSON 형태로 저장
+        },
+      });
+
+      // Create history entry
+      await prisma.analysisHistory.create({
+        data: {
+          analysisId: analysis.id,
+          userId,
+          actionType: 'created',
+          description: 'Analysis created and completed',
+        },
+      });
+
+      console.log('✅ Analysis created successfully');
+    }
 
     return NextResponse.json({
       success: true,

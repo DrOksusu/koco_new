@@ -42,7 +42,9 @@ export default function PSAAnalysisPage() {
     const storedFileName = sessionStorage.getItem('xrayFileName');
     const storedPatientName = sessionStorage.getItem('patientName');
     const storedPatientBirthDate = sessionStorage.getItem('patientBirthDate');
-    const storedLandmarkData = sessionStorage.getItem('landmarkData');
+    const storedPsaLandmarkData = sessionStorage.getItem('psaLandmarkData'); // PSA 전용 랜드마크
+    const storedLandmarkData = sessionStorage.getItem('landmarkData'); // 일반 랜드마크 (fallback)
+    const psaReEdit = sessionStorage.getItem('psaReEdit');
 
     console.log('PSA Page - SessionStorage data:', {
       hasImage: !!storedImage,
@@ -50,7 +52,9 @@ export default function PSAAnalysisPage() {
       fileName: storedFileName,
       patientName: storedPatientName,
       patientBirthDate: storedPatientBirthDate,
-      hasLandmarkData: !!storedLandmarkData
+      hasPsaLandmarkData: !!storedPsaLandmarkData,
+      hasLandmarkData: !!storedLandmarkData,
+      psaReEdit: psaReEdit
     });
 
     if (storedImage) {
@@ -59,22 +63,35 @@ export default function PSAAnalysisPage() {
       setPatientName(storedPatientName || '');
       setPatientBirthDate(storedPatientBirthDate || '');
 
-      // 기존 랜드마크 데이터 로드
-      if (storedLandmarkData) {
+      // PSA 전용 랜드마크 데이터 우선 로드 (재편집 시)
+      const landmarkDataToUse = storedPsaLandmarkData || storedLandmarkData;
+
+      if (landmarkDataToUse) {
         try {
-          const landmarkData = JSON.parse(storedLandmarkData);
-          console.log('PSA Page - Loading existing landmarks:', landmarkData);
-          setLandmarks(landmarkData);
+          const landmarkData = JSON.parse(landmarkDataToUse);
+          console.log('PSA Page - Loading existing PSA landmarks:', landmarkData);
+          console.log('PSA Landmarks count:', Object.keys(landmarkData).length);
+
+          // PSA 6개 포인트만 필터링
+          const psaOnlyLandmarks: Record<string, { x: number; y: number }> = {};
+          PSA_LANDMARKS.forEach(landmarkName => {
+            if (landmarkData[landmarkName]) {
+              psaOnlyLandmarks[landmarkName] = landmarkData[landmarkName];
+            }
+          });
+
+          console.log('Filtered PSA landmarks:', psaOnlyLandmarks);
+          setLandmarks(psaOnlyLandmarks);
 
           // 랜드마크가 모두 있으면 currentIndex를 마지막으로 설정
-          if (Object.keys(landmarkData).length === PSA_LANDMARKS.length) {
+          if (Object.keys(psaOnlyLandmarks).length === PSA_LANDMARKS.length) {
             setCurrentIndex(PSA_LANDMARKS.length);
           } else {
             // 일부만 있으면 다음 입력할 인덱스로 설정
-            setCurrentIndex(Object.keys(landmarkData).length);
+            setCurrentIndex(Object.keys(psaOnlyLandmarks).length);
           }
         } catch (error) {
-          console.error('Failed to parse landmark data:', error);
+          console.error('Failed to parse PSA landmark data:', error);
         }
       }
 
@@ -272,7 +289,11 @@ export default function PSAAnalysisPage() {
       throw new Error('Canvas 이미지를 생성할 수 없습니다.');
     }
 
+    // 기존 분석 ID 가져오기 (있으면 업데이트, 없으면 생성)
+    const existingAnalysisId = sessionStorage.getItem('analysisId');
+
     const analysisData = {
+      analysisId: existingAnalysisId || undefined, // 업데이트용 ID
       type: 'PSA',
       patientName,
       patientBirthDate,
@@ -287,15 +308,12 @@ export default function PSAAnalysisPage() {
       timestamp: new Date().toISOString()
     };
 
-    // Dashboard로 데이터 전송
-    if (window.opener) {
-      window.opener.postMessage({
-        type: 'PSA_ANALYSIS_COMPLETE',
-        data: analysisData
-      }, '*');
-    }
+    console.log('💾 Saving PSA analysis:', {
+      mode: existingAnalysisId ? 'UPDATE' : 'CREATE',
+      analysisId: existingAnalysisId || 'NEW'
+    });
 
-    // API로 저장
+    // API로 저장 (먼저 DB에 저장)
     try {
       const response = await fetch('/api/psa/save', {
         method: 'POST',
@@ -304,12 +322,32 @@ export default function PSAAnalysisPage() {
       });
 
       if (response.ok) {
+        console.log('✅ PSA 분석이 DB에 저장되었습니다.');
+
+        // DB 저장 성공 후 Dashboard로 데이터 전송
+        if (window.opener) {
+          window.opener.postMessage({
+            type: 'PSA_ANALYSIS_COMPLETE',
+            data: analysisData
+          }, '*');
+          console.log('✅ Dashboard에 PSA 완료 메시지 전송');
+        }
+
+        // BroadcastChannel로 모든 탭에 알림 (분석이력 자동 새로고침)
+        const channel = new BroadcastChannel('analysis_updates');
+        channel.postMessage({ type: 'ANALYSIS_SAVED', analysisType: 'PSA' });
+        channel.close();
+        console.log('✅ BroadcastChannel: 모든 탭에 PSA 저장 알림');
+
         alert('PSA 분석이 저장되었습니다.');
         window.close();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'DB 저장 실패');
       }
     } catch (error) {
-      console.error('Error saving PSA analysis:', error);
-      alert('저장 중 오류가 발생했습니다.');
+      console.error('❌ Error saving PSA analysis:', error);
+      alert('저장 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
     }
   };
 

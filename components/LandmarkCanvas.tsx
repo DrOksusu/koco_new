@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, MouseEvent } from 'react';
 import { getLandmarkColor, LANDMARKS } from '@/lib/landmarks';
+import { imageCache } from '@/lib/imageCache';
 
 interface LandmarkCanvasProps {
   imageUrl: string;
@@ -40,7 +41,7 @@ export default function LandmarkCanvas({
     }
   };
 
-  // 이미지 로드 및 캔버스 초기화
+  // 이미지 로드 및 캔버스 초기화 (최적화: imageCache 사용)
   useEffect(() => {
     console.log('LandmarkCanvas useEffect - imageUrl:', imageUrl);
     if (!imageUrl) {
@@ -56,113 +57,38 @@ export default function LandmarkCanvas({
     // 이미지 로드 상태 리셋
     setImageLoaded(false);
 
-    let blobUrlToCleanup: string | null = null;
-    let hasRegeneratedOnce = false;
+    let mounted = true;
+
     const loadImage = async () => {
-      const img = new Image();
-      let finalImageUrl = imageUrl;
-
-      console.log('Checking imageUrl:', imageUrl);
-
-      // S3 URL인지 확인하고 pre-signed URL 생성 (PSA와 동일한 로직)
-      const isS3URL = imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('s3.ap-northeast-2.amazonaws.com');
-      const isPreSignedUrl = imageUrl.includes('X-Amz-Signature');
-
-      if (isS3URL && !isPreSignedUrl) {
-        console.log('LandmarkCanvas - S3 이미지를 위한 pre-signed URL 생성 중...');
-        try {
-          const response = await fetch('/api/s3/get-image', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ imageUrl: imageUrl }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.presignedUrl) {
-              finalImageUrl = data.presignedUrl;
-              console.log('LandmarkCanvas - Pre-signed URL 생성 완료');
-            } else {
-              console.error('LandmarkCanvas - Pre-signed URL 생성 실패, 직접 접근 시도');
-              finalImageUrl = imageUrl;
-            }
-          } else {
-            console.error('LandmarkCanvas - Pre-signed URL 생성 실패, 직접 접근 시도');
-            finalImageUrl = imageUrl;
-          }
-        } catch (error) {
-          console.error('LandmarkCanvas - Pre-signed URL 생성 중 오류:', error);
-          finalImageUrl = imageUrl;
-        }
+      // 빈 URL인 경우 로드하지 않음
+      if (!imageUrl || imageUrl.trim() === '') {
+        return;
       }
 
-      // CORS 설정 - Canvas export를 위해 필수 (PSA와 동일)
-      if (!imageUrl.startsWith('data:')) {
-        img.crossOrigin = 'anonymous';
-      }
+      try {
+        console.log('LandmarkCanvas - Loading image via cache:', imageUrl.substring(0, 50));
 
-      img.onerror = async (error) => {
-        console.error('LandmarkCanvas 이미지 로드 실패:', error);
-        console.error('Failed URL:', finalImageUrl);
-        console.error('Original URL:', imageUrl);
+        // imageCache를 통해 이미지 로드 (중복 방지, 자동 캐싱)
+        const blobUrl = await imageCache.getOrLoadImage(imageUrl);
 
-        const isPreSigned = finalImageUrl.includes('X-Amz-Signature');
+        if (!mounted || !blobUrl) return;
 
-        // CORS 에러로 추정되는 경우 한 번 더 시도
-        if (img.crossOrigin) {
-          console.log('CORS 에러로 추정, 재시도 중...');
-          img.crossOrigin = null;
-          // pre-signed URL은 쿼리 파라미터 변경 시 서명이 무효화되므로 그대로 재시도
-          if (isPreSigned) {
-            img.src = finalImageUrl; // 그대로 재시도
-          } else {
-            img.src = finalImageUrl + (finalImageUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now();
-          }
-        } else {
-          // pre-signed URL이 만료되었을 수 있으므로, 1회에 한해 재서명 시도
-          if (isPreSigned && !hasRegeneratedOnce) {
-            try {
-              hasRegeneratedOnce = true;
-              const baseUrl = finalImageUrl.split('?')[0];
-              console.log('Pre-signed 만료 추정, 재서명 요청:', baseUrl);
-              const resp = await fetch('/api/s3/get-image', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ imageUrl: baseUrl })
-              });
-              if (resp.ok) {
-                const data = await resp.json();
-                if (data.success && data.presignedUrl) {
-                  const renewed = data.presignedUrl;
-                  console.log('재서명 완료, 프록시 경유 재시도');
-                  const proxied = `/api/image-proxy?url=${encodeURIComponent(renewed)}`;
-                  try {
-                    const pr = await fetch(proxied, { cache: 'no-store' });
-                    if (pr.ok) {
-                      const blob = await pr.blob();
-                      const blobUrl = URL.createObjectURL(blob);
-                      if (blobUrlToCleanup) URL.revokeObjectURL(blobUrlToCleanup);
-                      blobUrlToCleanup = blobUrl;
-                      img.src = blobUrl;
-                      return;
-                    }
-                  } catch {}
-                  img.src = proxied;
-                  return;
-                }
-              }
-            } catch (e) {
-              console.error('재서명 중 오류:', e);
-            }
-          }
-          console.error('LandmarkCanvas 이미지 로드 최종 실패');
+        // 이미지 객체 생성 및 로드
+        const img = new Image();
+
+        // Canvas export를 위해 CORS 설정 (Blob URL은 CORS 불필요)
+        if (!blobUrl.startsWith('blob:') && !blobUrl.startsWith('data:')) {
+          img.crossOrigin = 'anonymous';
         }
-      };
 
-      img.onload = () => {
-        imageRef.current = img;
+        img.onerror = (error) => {
+          console.error('LandmarkCanvas - Image element load failed:', error);
+        };
+
+        img.onload = () => {
+          if (!mounted) return;
+
+          imageRef.current = img;
 
         // DOM이 완전히 렌더링된 후 캔버스 초기화
         requestAnimationFrame(() => {
@@ -224,39 +150,19 @@ export default function LandmarkCanvas({
         });
       };
 
-      // 최종 URL 설정
-      const isPreSignedFinal = finalImageUrl.includes('X-Amz-Signature');
-      if (isPreSignedFinal) {
-        try {
-          // 프록시를 통해 동일 출처로 가져와 Blob URL로 변환 (보다 안정적)
-          console.log('Using proxy (prefetch) for pre-signed URL');
-          const proxied = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
-          const resp = await fetch(proxied, { cache: 'no-store' });
-          if (!resp.ok) {
-            console.error('Proxy fetch failed with status:', resp.status);
-            img.src = proxied; // 그래도 직접 시도
-          } else {
-            const blob = await resp.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            blobUrlToCleanup = blobUrl;
-            img.crossOrigin = undefined as unknown as any; // 동일 출처
-            img.src = blobUrl;
-          }
-        } catch (e) {
-          console.error('Proxy prefetch error:', e);
-          const proxied = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
-          img.src = proxied;
+      img.src = blobUrl;
+      } catch (error) {
+        console.error('LandmarkCanvas - Failed to load image via cache:', error);
+        if (mounted) {
+          setImageLoaded(false);
         }
-      } else {
-        img.src = finalImageUrl;
       }
     };
 
     loadImage();
+
     return () => {
-      if (blobUrlToCleanup) {
-        URL.revokeObjectURL(blobUrlToCleanup);
-      }
+      mounted = false;
     };
   }, [imageUrl]);
 

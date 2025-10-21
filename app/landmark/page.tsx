@@ -369,10 +369,14 @@ export default function LandmarkPage() {
         annotatedImageUrl: s3AnnotatedUrl,
       });
 
+      // 기존 분석 ID 가져오기 (있으면 업데이트, 없으면 생성)
+      const existingAnalysisId = sessionStorage.getItem('analysisId');
+
       const saveResponse = await fetch('/api/landmark/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          analysisId: existingAnalysisId || undefined, // 기존 분석 ID (업데이트용)
           fileName,
           landmarks: extendedLandmarks, // 확장된 랜드마크 저장
           angles,
@@ -412,6 +416,12 @@ export default function LandmarkPage() {
             analysisId: saveResult.analysisId
           });
         }
+
+        // BroadcastChannel로 모든 탭에 알림 (분석이력 자동 새로고침)
+        const channel = new BroadcastChannel('analysis_updates');
+        channel.postMessage({ type: 'ANALYSIS_SAVED', analysisType: 'LANDMARK' });
+        channel.close();
+        console.log('✅ BroadcastChannel: 모든 탭에 Landmark 저장 알림');
         
         // 4. 엑셀 파일 생성 및 다운로드
         generateExcelFile(fileName || 'analysis', landmarks, angles);

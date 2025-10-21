@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
+import { imageCache } from '@/lib/imageCache';
 
 interface PSACanvasProps {
   imageUrl: string;
@@ -59,94 +60,69 @@ export default function PSACanvas({
     };
   };
 
-  // 이미지 로드
+  // 이미지 로드 (최적화: imageCache 사용)
   useEffect(() => {
+    let mounted = true;
+
     const loadImage = async () => {
-      const img = new Image();
-      let finalImageUrl = imageUrl;
+      // 빈 URL인 경우 로드하지 않음
+      if (!imageUrl || imageUrl.trim() === '') {
+        return;
+      }
 
-      console.log('PSACanvas - Checking imageUrl:', imageUrl);
+      try {
+        console.log('PSACanvas - Loading image via cache:', imageUrl.substring(0, 50));
 
-      // S3 URL인지 확인하고 pre-signed URL 생성
-      const isS3URL = imageUrl.includes('s3.amazonaws.com') || imageUrl.includes('s3.ap-northeast-2.amazonaws.com');
-      const isPreSignedUrl = imageUrl.includes('X-Amz-Signature');
+        // imageCache를 통해 이미지 로드 (중복 방지, 자동 캐싱)
+        const blobUrl = await imageCache.getOrLoadImage(imageUrl);
 
-      if (isS3URL && !isPreSignedUrl) {
-        console.log('PSACanvas - S3 이미지를 위한 pre-signed URL 생성 중...');
-        try {
-          const response = await fetch('/api/s3/get-image', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ imageUrl: imageUrl }),
-          });
+        if (!mounted || !blobUrl) return;
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.presignedUrl) {
-              finalImageUrl = data.presignedUrl;
-              console.log('PSACanvas - Pre-signed URL 생성 완료');
-            } else {
-              console.error('PSACanvas - Pre-signed URL 생성 실패, 직접 접근 시도');
-              finalImageUrl = imageUrl;
+        // 이미지 객체 생성 및 로드
+        const img = new Image();
+
+        img.onload = () => {
+          if (!mounted) return;
+
+          imageRef.current = img;
+          setImageLoaded(true);
+
+          if (canvasRef.current) {
+            const canvas = canvasRef.current;
+            const parent = canvas.parentElement;
+            if (parent) {
+              const maxWidth = parent.clientWidth;
+              const maxHeight = parent.clientHeight - 100;
+              const imgAspect = img.width / img.height;
+              const containerAspect = maxWidth / maxHeight;
+
+              let newScale;
+              if (imgAspect > containerAspect) {
+                newScale = maxWidth / img.width;
+              } else {
+                newScale = maxHeight / img.height;
+              }
+              setScale(newScale * 0.9);
             }
-          } else {
-            console.error('PSACanvas - Pre-signed URL 생성 실패, 직접 접근 시도');
-            finalImageUrl = imageUrl;
           }
-        } catch (error) {
-          console.error('PSACanvas - Pre-signed URL 생성 중 오류:', error);
-          finalImageUrl = imageUrl;
-        }
-      }
+        };
 
-      // CORS 설정 - Canvas export를 위해 필수
-      if (!imageUrl.startsWith('data:')) {
-        img.crossOrigin = 'anonymous';
-      }
-    img.onload = () => {
-      imageRef.current = img;
-      setImageLoaded(true);
-      if (canvasRef.current) {
-        const canvas = canvasRef.current;
-        const parent = canvas.parentElement;
-        if (parent) {
-          const maxWidth = parent.clientWidth;
-          const maxHeight = parent.clientHeight - 100;
-          const imgAspect = img.width / img.height;
-          const containerAspect = maxWidth / maxHeight;
+        img.onerror = (error) => {
+          console.error('PSACanvas - Image element load failed:', error);
+        };
 
-          let newScale;
-          if (imgAspect > containerAspect) {
-            newScale = maxWidth / img.width;
-          } else {
-            newScale = maxHeight / img.height;
-          }
-          setScale(newScale * 0.9);
-        }
+        img.src = blobUrl;
+      } catch (error) {
+        console.error('PSACanvas - Failed to load image via cache:', error);
       }
-    };
-    
-      img.onerror = (error) => {
-        console.error('PSA 이미지 로드 실패:', error);
-        console.error('Failed URL:', finalImageUrl);
-        console.error('Original URL:', imageUrl);
-        
-        // CORS 에러인 경우 재시도
-        if (img.crossOrigin) {
-          console.log('CORS 에러로 추정, 재시도 중...');
-          img.crossOrigin = null;
-          img.src = finalImageUrl + (finalImageUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now();
-        } else {
-          console.error('PSA 이미지 로드 최종 실패');
-        }
-      };
-      
-      img.src = finalImageUrl;
     };
 
     loadImage();
+
+    // cleanup
+    return () => {
+      mounted = false;
+    };
   }, [imageUrl]);
 
   // 캔버스 그리기
@@ -425,6 +401,7 @@ export default function PSACanvas({
   return (
     <div className="relative w-full h-full flex items-center justify-center">
       <canvas
+        id="psaCanvas"
         ref={canvasRef}
         className="border border-gray-300 cursor-crosshair"
         onClick={handleCanvasClick}

@@ -205,6 +205,49 @@ export default function HistoryPage() {
     } else if (status === 'unauthenticated') {
       setLoading(false);
     }
+
+    // BroadcastChannel로 다른 탭/창과 통신 (크로스 탭 자동 새로고침)
+    const channel = new BroadcastChannel('analysis_updates');
+
+    channel.onmessage = (event) => {
+      if (event.data.type === 'ANALYSIS_SAVED') {
+        console.log('✅ BroadcastChannel: 분석 저장 완료, 이력 새로고침');
+
+        // 1초 후 새로고침 (DB 저장 완료 대기)
+        setTimeout(() => {
+          fetchHistory();
+        }, 1000);
+      }
+    };
+
+    // postMessage 리스너 추가 (PSA/Landmark 완료 시 자동 새로고침)
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'LANDMARK_ANALYSIS_COMPLETE' ||
+          event.data.type === 'PSA_ANALYSIS_COMPLETE') {
+        console.log('✅ postMessage: 분석 완료 메시지 수신, 이력 새로고침:', event.data.type);
+
+        // 1초 후 새로고침 (DB 저장 완료 대기)
+        setTimeout(() => {
+          fetchHistory();
+        }, 1000);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // 페이지 포커스 시 자동 새로고침 (다른 탭에서 돌아올 때)
+    const handleFocus = () => {
+      console.log('✅ 페이지 포커스, 이력 새로고침');
+      fetchHistory();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      channel.close();
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [session, status]);
 
   const fetchHistory = async () => {

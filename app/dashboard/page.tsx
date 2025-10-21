@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import FileUpload from '@/components/FileUpload';
 import MeasurementDashboard from '@/components/MeasurementDashboard';
 import Link from 'next/link';
 import { useMeasurementStore } from '@/store/measurementStore';
+import { imageCache } from '@/lib/imageCache';
 
-// S3 이미지 컴포넌트 (PSA와 동일한 간단한 로직 사용)
-
-function S3Image({
+// 최적화된 S3 이미지 컴포넌트 (imageCache 사용)
+const S3Image = memo(function S3Image({
   src,
   alt = 'Image',
   className = '',
@@ -21,218 +21,39 @@ function S3Image({
   className?: string;
   onClick?: () => void;
 }) {
-  const [presignedUrl, setPresignedUrl] = useState<string>(src);
-  const [loading, setLoading] = useState(false);
+  const [displayUrl, setDisplayUrl] = useState<string>('');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // PSA와 완전히 동일한 이미지 로드 로직
   useEffect(() => {
-    let blobUrlToCleanup: string | null = null;
-    let hasTriedProxy = false; // 프록시 재시도 플래그
+    let mounted = true;
 
     const loadImage = async () => {
-      const img = new Image();
-      let finalImageUrl = src;
+      try {
+        setLoading(true);
+        setError(false);
 
-      console.log('=== S3Image Component Debug ===');
-      console.log('S3Image - src prop:', src.substring(0, 100) + '...');
-      console.log('S3Image - src length:', src.length);
-      console.log('S3Image - src type:', {
-        isDataUrl: src.startsWith('data:'),
-        isS3Url: src.includes('s3.amazonaws.com'),
-        isPreSigned: src.includes('X-Amz-Signature'),
-        isBlobUrl: src.startsWith('blob:'),
-        urlLength: src.length
-      });
+        // imageCache를 통해 이미지 로드 (중복 방지, 자동 캐싱)
+        const blobUrl = await imageCache.getOrLoadImage(src);
 
-      // Data URL인 경우 직접 사용 (긴 URL은 Blob URL로 변환)
-      if (src.startsWith('data:')) {
-        console.log('S3Image - Data URL detected, checking length...');
-        console.log('S3Image - Data URL prefix:', src.substring(0, 50));
-        console.log('S3Image - Data URL length:', src.length);
-        
-        // 긴 Data URL (65KB 이상)인 경우에만 Blob URL로 변환
-        if (src.length > 65000) {
-          console.log('S3Image - Long Data URL detected, converting to Blob URL (atob)...');
-          try {
-            // data:[mime];base64,.... 형태 파싱
-            const commaIndex = src.indexOf(',');
-            const header = src.substring(0, commaIndex); // data:image/png;base64
-            const base64 = src.substring(commaIndex + 1);
-
-            // MIME 타입 추출
-            const mimeMatch = header.match(/^data:(.*?);base64$/);
-            const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-
-            // base64 디코드 (atob)
-            const binaryString = atob(base64);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-
-            const blob = new Blob([bytes], { type: mime });
-            const blobUrl = URL.createObjectURL(blob);
-            console.log('S3Image - Converted to Blob URL:', blobUrl);
-            finalImageUrl = blobUrl;
-            blobUrlToCleanup = blobUrl; // cleanup을 위해 저장
-          } catch (error) {
-            console.error('S3Image - Failed to convert Data URL to Blob URL (atob):', error);
-            finalImageUrl = src; // 실패 시 원본 사용
-          }
-        } else {
-          console.log('S3Image - Short Data URL, using directly');
-          finalImageUrl = src;
+        if (mounted) {
+          setDisplayUrl(blobUrl);
+          setLoading(false);
         }
-      } else {
-        // S3 URL인지 확인하고 pre-signed URL 생성 (PSA와 완전히 동일한 로직)
-        const isS3URL = src.includes('s3.amazonaws.com') || src.includes('s3.ap-northeast-2.amazonaws.com');
-        const isPreSignedUrl = src.includes('X-Amz-Signature');
-
-        console.log('S3Image - URL analysis:', {
-          isS3URL,
-          isPreSignedUrl,
-          url: src.substring(0, 100) + '...'
-        });
-
-        if (isS3URL && !isPreSignedUrl) {
-          console.log('S3Image - S3 이미지를 위한 pre-signed URL 생성 중...');
-          try {
-            const response = await fetch('/api/s3/get-image', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ imageUrl: src }),
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              if (data.success && data.presignedUrl) {
-                finalImageUrl = data.presignedUrl;
-                console.log('S3Image - Pre-signed URL 생성 완료');
-              } else {
-                console.error('S3Image - Pre-signed URL 생성 실패, 직접 접근 시도');
-                finalImageUrl = src;
-              }
-            } else {
-              console.error('S3Image - Pre-signed URL 생성 실패, 직접 접근 시도');
-              finalImageUrl = src;
-            }
-          } catch (error) {
-            console.error('S3Image - Pre-signed URL 생성 중 오류:', error);
-            finalImageUrl = src;
-          }
-        } else {
-          console.log('S3Image - 이미 pre-signed URL이거나 S3 URL이 아님, 직접 사용');
-          finalImageUrl = src;
-        }
-      }
-
-      console.log('S3Image - Final image URL:', finalImageUrl.substring(0, 100) + '...');
-      console.log('S3Image - Final URL length:', finalImageUrl.length);
-
-      // S3 URL이나 Pre-signed URL인 경우 처음부터 프록시 사용
-      const isS3OrPreSigned = finalImageUrl.includes('s3.amazonaws.com') || finalImageUrl.includes('X-Amz-Signature');
-
-      if (isS3OrPreSigned && !finalImageUrl.startsWith('blob:')) {
-        console.log('S3/Pre-signed URL 감지, 프록시를 통해 로드합니다...');
-
-        try {
-          const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
-          const response = await fetch(proxyUrl);
-
-          if (response.ok) {
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            blobUrlToCleanup = blobUrl;
-
-            console.log('프록시를 통한 이미지 로드 성공, Blob URL 생성:', blobUrl);
-            finalImageUrl = blobUrl;
-          } else {
-            console.error('프록시를 통한 이미지 로드 실패, 직접 접근 시도:', response.status);
-          }
-        } catch (proxyError) {
-          console.error('프록시 요청 중 오류, 직접 접근 시도:', proxyError);
-        }
-      }
-
-      // CORS 설정 (Data URL과 Blob URL은 CORS 불필요)
-      if (!finalImageUrl.startsWith('data:') && !finalImageUrl.startsWith('blob:')) {
-        img.crossOrigin = 'anonymous';
-      }
-
-      // PSA와 동일한 에러 처리 + 프록시 폴백
-      img.onerror = async (error) => {
-        console.error('=== S3Image Error Debug ===');
-        console.error('S3Image 이미지 로드 실패:', error);
-        console.error('Failed URL:', finalImageUrl.substring(0, 100) + '...');
-        console.error('Original URL:', src.substring(0, 100) + '...');
-        console.error('URL length:', finalImageUrl.length);
-        console.error('URL type:', {
-          isDataUrl: finalImageUrl.startsWith('data:'),
-          isS3Url: finalImageUrl.includes('s3.amazonaws.com'),
-          isPreSigned: finalImageUrl.includes('X-Amz-Signature'),
-          isBlobUrl: finalImageUrl.startsWith('blob:')
-        });
-
-        // CORS 에러 또는 S3 접근 실패 시 프록시 사용
-        if (!hasTriedProxy && (finalImageUrl.includes('s3.amazonaws.com') || finalImageUrl.includes('X-Amz-Signature'))) {
-          console.log('CORS 에러로 추정, 프록시를 통해 재시도 중...');
-          hasTriedProxy = true;
-
-          try {
-            // 프록시를 통해 이미지를 Blob으로 가져오기
-            const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(finalImageUrl)}`;
-            const response = await fetch(proxyUrl);
-
-            if (response.ok) {
-              const blob = await response.blob();
-              const blobUrl = URL.createObjectURL(blob);
-              if (blobUrlToCleanup) URL.revokeObjectURL(blobUrlToCleanup);
-              blobUrlToCleanup = blobUrl;
-
-              console.log('프록시를 통한 이미지 로드 성공, Blob URL 생성:', blobUrl);
-              img.crossOrigin = undefined as any; // Blob URL은 CORS 불필요
-              img.src = blobUrl;
-            } else {
-              console.error('프록시를 통한 이미지 로드 실패:', response.status);
-              setError(true);
-            }
-          } catch (proxyError) {
-            console.error('프록시 요청 중 오류:', proxyError);
-            setError(true);
-          }
-        } else if (img.crossOrigin) {
-          console.log('CORS 설정 제거 후 재시도 중...');
-          img.crossOrigin = null;
-          img.src = finalImageUrl + (finalImageUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now();
-        } else {
-          console.error('S3Image 이미지 로드 최종 실패');
+      } catch (err) {
+        console.error('S3Image load error:', err);
+        if (mounted) {
           setError(true);
+          setLoading(false);
         }
-      };
-
-      // PSA와 동일한 로드 성공 처리
-      img.onload = () => {
-        console.log('S3Image 이미지 로드 성공');
-        setPresignedUrl(finalImageUrl);
-        setLoading(false);
-      };
-
-      // 이미지 로드 시작
-      img.src = finalImageUrl;
+      }
     };
 
     loadImage();
-    
-    // cleanup 함수 반환
+
+    // cleanup
     return () => {
-      if (blobUrlToCleanup) {
-        console.log('S3Image - Cleaning up Blob URL:', blobUrlToCleanup);
-        URL.revokeObjectURL(blobUrlToCleanup);
-      }
+      mounted = false;
     };
   }, [src]);
 
@@ -246,7 +67,7 @@ function S3Image({
     );
   }
 
-  if (error || !presignedUrl) {
+  if (error || !displayUrl) {
     return (
       <div className={`bg-gray-100 ${className}`}>
         <div className="flex flex-col items-center justify-center h-full">
@@ -259,16 +80,15 @@ function S3Image({
     );
   }
 
-  // PSA와 완전히 동일한 렌더링
   return (
     <img
-      src={presignedUrl}
+      src={displayUrl}
       alt={alt}
       className={className}
       onClick={onClick}
     />
   );
-}
+});
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -383,6 +203,10 @@ export default function DashboardPage() {
     if (storedData) {
       console.log('Loading data from history/re-edit:', storedData);
       const data = JSON.parse(storedData);
+      console.log('=== Analysis Data Debug ===');
+      console.log('Data type:', data.type);
+      console.log('Has annotatedImageUrl:', !!data.annotatedImageUrl);
+      console.log('Has originalImageUrl:', !!data.originalImageUrl);
       setAnalysisData(data);
 
       // 환자 정보 복원
@@ -471,12 +295,20 @@ export default function DashboardPage() {
         // 랜드마크가 표시된 이미지 처리
         if (data.annotatedImageUrl) {
           console.log('Processing annotated image URL:', data.annotatedImageUrl);
+          console.log('Analysis type:', data.type);
 
-          // S3Image 컴포넌트가 알아서 서명된 URL을 처리하므로
-          // 여기서는 원본 URL을 그대로 저장
-          setLandmarkResultImage(data.annotatedImageUrl);
-          setUploadedLandmarkResult(data.annotatedImageUrl); // 진단 완료 섹션에도 표시
-          console.log('Landmark result image URL set:', data.annotatedImageUrl);
+          // 분석 타입에 따라 다른 이미지 상태에 저장
+          if (data.type === 'PSA') {
+            // PSA 분석인 경우
+            setPsaResultImage(data.annotatedImageUrl);
+            setUploadedPsaResult(data.annotatedImageUrl); // 진단 완료 섹션에도 표시
+            console.log('PSA result image URL set:', data.annotatedImageUrl);
+          } else {
+            // Landmark 분석인 경우
+            setLandmarkResultImage(data.annotatedImageUrl);
+            setUploadedLandmarkResult(data.annotatedImageUrl); // 진단 완료 섹션에도 표시
+            console.log('Landmark result image URL set:', data.annotatedImageUrl);
+          }
         }
       }
 
@@ -594,6 +426,15 @@ export default function DashboardPage() {
         sessionStorage.setItem('patientName', patientName);
         sessionStorage.setItem('patientBirthDate', patientBirthDate);
 
+        // 기존 분석 ID가 있으면 전달 (업데이트용)
+        if (analysisData?.analysisId) {
+          sessionStorage.setItem('analysisId', analysisData.analysisId);
+          console.log('✅ Landmark: 기존 분석 업데이트 (ID:', analysisData.analysisId, ')');
+        } else {
+          sessionStorage.removeItem('analysisId');
+          console.log('✅ Landmark: 새 분석 생성');
+        }
+
         // 새 창으로 열기
         const newWindow = window.open('/landmark', '_blank',
           'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
@@ -634,6 +475,15 @@ export default function DashboardPage() {
             sessionStorage.setItem('patientName', patientName);
             sessionStorage.setItem('patientBirthDate', patientBirthDate);
 
+            // 기존 분석 ID가 있으면 전달 (업데이트용)
+            if (analysisData?.analysisId) {
+              sessionStorage.setItem('analysisId', analysisData.analysisId);
+              console.log('✅ Landmark: 기존 분석 업데이트 (ID:', analysisData.analysisId, ')');
+            } else {
+              sessionStorage.removeItem('analysisId');
+              console.log('✅ Landmark: 새 분석 생성');
+            }
+
             // 새 창으로 열기
             const newWindow = window.open('/landmark', '_blank',
               'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
@@ -670,6 +520,15 @@ export default function DashboardPage() {
           sessionStorage.setItem('xrayFileName', file.name);
           sessionStorage.setItem('patientName', patientName);
           sessionStorage.setItem('patientBirthDate', patientBirthDate);
+
+          // 기존 분석 ID가 있으면 전달 (업데이트용)
+          if (analysisData?.analysisId) {
+            sessionStorage.setItem('analysisId', analysisData.analysisId);
+            console.log('✅ PSA: 기존 분석 업데이트 (ID:', analysisData.analysisId, ')');
+          } else {
+            sessionStorage.removeItem('analysisId');
+            console.log('✅ PSA: 새 분석 생성');
+          }
 
           // 새 창으로 열기
           const newWindow = window.open('/psa', '_blank',
@@ -710,6 +569,15 @@ export default function DashboardPage() {
               sessionStorage.setItem('xrayFileName', file.name);
               sessionStorage.setItem('patientName', patientName);
               sessionStorage.setItem('patientBirthDate', patientBirthDate);
+
+              // 기존 분석 ID가 있으면 전달 (업데이트용)
+              if (analysisData?.analysisId) {
+                sessionStorage.setItem('analysisId', analysisData.analysisId);
+                console.log('✅ PSA: 기존 분석 업데이트 (ID:', analysisData.analysisId, ')');
+              } else {
+                sessionStorage.removeItem('analysisId');
+                console.log('✅ PSA: 새 분석 생성');
+              }
 
               // 새 창으로 열기
               const newWindow = window.open('/psa', '_blank',
@@ -1211,12 +1079,66 @@ export default function DashboardPage() {
               <h3 className="text-xs font-medium text-gray-700 mb-1">
                 PSA
                 <span className="ml-2 text-xs text-blue-600">
-                  {uploadedPsaResult ? '(호버하여 수정)' : '(분석 필요)'}
+                  {uploadedPsaResult ? '(더블클릭하여 수정)' : '(분석 필요)'}
                 </span>
               </h3>
               <div
-                className="relative border border-gray-300 rounded overflow-hidden bg-gray-50"
+                className="relative border border-gray-300 rounded overflow-hidden bg-gray-50 cursor-pointer"
                 style={{ aspectRatio: '1706/1373', height: 'auto' }}
+                onDoubleClick={() => {
+                  if (!uploadedPsaResult) return;
+
+                  console.log('=== PSA DOUBLE CLICKED ===');
+                  console.log('uploadedPsaResult:', uploadedPsaResult);
+                  console.log('originalResultImage:', originalResultImage);
+
+                  // 원본 이미지와 환자 정보를 sessionStorage에 저장
+                  if (originalResultImage) {
+                    sessionStorage.setItem('xrayImage', originalResultImage);
+                  }
+                  if (uploadedFiles[0]) {
+                    sessionStorage.setItem('xrayFileName', uploadedFiles[0].name);
+                  }
+                  sessionStorage.setItem('patientName', patientName);
+                  sessionStorage.setItem('patientBirthDate', patientBirthDate);
+
+                  // PSA 분석 데이터를 sessionStorage에 저장
+                  const psaData = localStorage.getItem('psaAnalysisData');
+                  console.log('PSA data from localStorage:', psaData);
+
+                  if (psaData) {
+                    const parsedPsaData = JSON.parse(psaData);
+
+                    // PSA 전용 랜드마크 데이터 저장 (6개 포인트)
+                    if (parsedPsaData.landmarks) {
+                      console.log('Saving PSA landmarks:', parsedPsaData.landmarks);
+                      sessionStorage.setItem('psaLandmarkData', JSON.stringify(parsedPsaData.landmarks));
+                    }
+
+                    const psaDataToSave = {
+                      ...parsedPsaData,
+                      patientName,
+                      patientBirthDate,
+                      imageUrl: originalResultImage,
+                      annotatedImageUrl: uploadedPsaResult
+                    };
+                    console.log('Saving PSA data to sessionStorage:', psaDataToSave);
+                    sessionStorage.setItem('psaAnalysisData', JSON.stringify(psaDataToSave));
+                  }
+
+                  // PSA 재편집 플래그 설정
+                  sessionStorage.setItem('psaReEdit', 'true');
+
+                  // PSA 페이지를 새 창으로 열기
+                  const newWindow = window.open('/psa', '_blank',
+                    'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
+
+                  if (newWindow) {
+                    newWindow.focus();
+                  } else {
+                    alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+                  }
+                }}
               >
                 {uploadedPsaResult ? (
                   <S3Image
@@ -1232,87 +1154,10 @@ export default function DashboardPage() {
                   />
                 )}
 
-                {/* 수정 버튼 오버레이 */}
+                {/* 완료 표시 오버레이 */}
                 {uploadedPsaResult && (
-                  <div className="absolute inset-0 group">
-                    {/* 호버 시 반투명 배경 */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200" />
-
-                    {/* 수정 버튼 */}
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-
-                          console.log('=== PSA EDIT BUTTON CLICKED ===');
-                          console.log('uploadedPsaResult:', uploadedPsaResult);
-                          console.log('originalResultImage:', originalResultImage);
-
-                          // 원본 이미지와 환자 정보를 sessionStorage에 저장
-                          if (originalResultImage) {
-                            sessionStorage.setItem('xrayImage', originalResultImage);
-                          }
-                          if (uploadedFiles[0]) {
-                            sessionStorage.setItem('xrayFileName', uploadedFiles[0].name);
-                          }
-                          sessionStorage.setItem('patientName', patientName);
-                          sessionStorage.setItem('patientBirthDate', patientBirthDate);
-
-                          // 기존 랜드마크 데이터를 sessionStorage에 저장
-                          if (analysisData) {
-                            const landmarksData = analysisData.landmarks || analysisData.measurements || {};
-                            if (Object.keys(landmarksData).length > 0) {
-                              console.log('Saving landmark data:', landmarksData);
-                              sessionStorage.setItem('landmarkData', JSON.stringify(landmarksData));
-                            }
-                          }
-
-                          // PSA 분석 데이터를 sessionStorage에 저장
-                          const psaData = localStorage.getItem('psaAnalysisData');
-                          console.log('PSA data from localStorage:', psaData);
-
-                          if (psaData) {
-                            const parsedPsaData = JSON.parse(psaData);
-                            const psaDataToSave = {
-                              ...parsedPsaData,
-                              patientName,
-                              patientBirthDate,
-                              imageUrl: originalResultImage,
-                              annotatedImageUrl: uploadedPsaResult // PSA 결과 이미지 추가
-                            };
-                            console.log('Saving PSA data to sessionStorage:', psaDataToSave);
-                            sessionStorage.setItem('psaAnalysisData', JSON.stringify(psaDataToSave));
-                          }
-
-                          // PSA 재편집 플래그 설정
-                          sessionStorage.setItem('psaReEdit', 'true');
-
-                          // PSA 페이지를 새 창으로 열기
-                          const newWindow = window.open('/psa', '_blank',
-                            'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
-
-                          if (newWindow) {
-                            newWindow.focus();
-                          } else {
-                            alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
-                          }
-                        }}
-                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200"
-                      >
-                        <div className="flex items-center gap-2">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                          <span>PSA 수정</span>
-                        </div>
-                      </button>
-                    </div>
-
-                    {/* 상단 우측 표시 */}
-                    <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-md pointer-events-none">
-                      ✓ 분석 완료
-                    </div>
+                  <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-md pointer-events-none">
+                    ✓ 분석 완료
                   </div>
                 )}
               </div>
