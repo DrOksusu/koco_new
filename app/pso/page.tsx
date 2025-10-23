@@ -6,8 +6,8 @@ import PSACanvas from '@/components/PSACanvas';
 import MagnifierCanvas from '@/components/MagnifierCanvas';
 import GuideMessage from '@/components/GuideMessage';
 
-// PSA 랜드마크 정의 (6개)
-const PSA_LANDMARKS = [
+// PSO 랜드마크 정의 (6개 - PSA와 동일)
+const PSO_LANDMARKS = [
   'Porion',
   'Orbitale',
   'Hinge Point',
@@ -16,7 +16,7 @@ const PSA_LANDMARKS = [
   'Symphysis Lingual'
 ];
 
-export default function PSAAnalysisPage() {
+export default function PSOAnalysisPage() {
   const router = useRouter();
   const [imageUrl, setImageUrl] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
@@ -42,25 +42,25 @@ export default function PSAAnalysisPage() {
     const storedFileName = sessionStorage.getItem('xrayFileName');
     const storedPatientName = sessionStorage.getItem('patientName');
     const storedPatientBirthDate = sessionStorage.getItem('patientBirthDate');
-    const storedPsaLandmarkData = sessionStorage.getItem('psaLandmarkData'); // PSA 전용 랜드마크
+    const storedPsoLandmarkData = sessionStorage.getItem('psoLandmarkData'); // PSO 전용 랜드마크
     const storedLandmarkData = sessionStorage.getItem('landmarkData'); // 일반 랜드마크 (fallback)
-    const psaReEdit = sessionStorage.getItem('psaReEdit');
+    const psoReEdit = sessionStorage.getItem('psoReEdit');
 
     console.log('========================================');
-    console.log('PSA Page - SessionStorage data:', {
+    console.log('PSO Page - SessionStorage data:', {
       hasImage: !!storedImage,
       imageLength: storedImage?.length,
       fileName: storedFileName,
       patientName: storedPatientName,
       patientBirthDate: storedPatientBirthDate,
-      hasPsaLandmarkData: !!storedPsaLandmarkData,
+      hasPsoLandmarkData: !!storedPsoLandmarkData,
       hasLandmarkData: !!storedLandmarkData,
-      psaReEdit: psaReEdit
+      psoReEdit: psoReEdit
     });
-    console.log('PSA sessionStorage keys:', Object.keys(sessionStorage));
-    console.log('PSA localStorage keys:', Object.keys(localStorage));
-    if (storedPsaLandmarkData) {
-      console.log('❌ WARNING: Found old psaLandmarkData:', storedPsaLandmarkData.substring(0, 100));
+    console.log('PSO sessionStorage keys:', Object.keys(sessionStorage));
+    console.log('PSO localStorage keys:', Object.keys(localStorage));
+    if (storedPsoLandmarkData) {
+      console.log('❌ WARNING: Found old psoLandmarkData:', storedPsoLandmarkData.substring(0, 100));
     }
     if (storedLandmarkData) {
       console.log('❌ WARNING: Found old landmarkData:', storedLandmarkData.substring(0, 100));
@@ -73,47 +73,47 @@ export default function PSAAnalysisPage() {
       setPatientName(storedPatientName || '');
       setPatientBirthDate(storedPatientBirthDate || '');
 
-      // PSA 전용 랜드마크 데이터 우선 로드 (재편집 시)
-      const landmarkDataToUse = storedPsaLandmarkData || storedLandmarkData;
+      // PSO 전용 랜드마크 데이터 우선 로드 (재편집 시)
+      const landmarkDataToUse = storedPsoLandmarkData || storedLandmarkData;
 
       if (landmarkDataToUse) {
         try {
           const landmarkData = JSON.parse(landmarkDataToUse);
-          console.log('PSA Page - Loading existing PSA landmarks:', landmarkData);
-          console.log('PSA Landmarks count:', Object.keys(landmarkData).length);
+          console.log('PSO Page - Loading existing PSO landmarks:', landmarkData);
+          console.log('PSO Landmarks count:', Object.keys(landmarkData).length);
 
-          // PSA 6개 포인트만 필터링 (PSA_ 접두사 포함)
-          const psaOnlyLandmarks: Record<string, { x: number; y: number }> = {};
-          PSA_LANDMARKS.forEach(landmarkName => {
-            // PSA_ 접두사가 있는 것을 우선 사용
-            const keyWithPrefix = `PSA_${landmarkName}`;
+          // PSO 6개 포인트만 필터링 (PSO_ 접두사 포함)
+          const psoOnlyLandmarks: Record<string, { x: number; y: number }> = {};
+          PSO_LANDMARKS.forEach(landmarkName => {
+            // PSO_ 접두사가 있는 것을 우선 사용
+            const keyWithPrefix = `PSO_${landmarkName}`;
             if (landmarkData[keyWithPrefix]) {
-              psaOnlyLandmarks[landmarkName] = landmarkData[keyWithPrefix];
+              psoOnlyLandmarks[landmarkName] = landmarkData[keyWithPrefix];
             } else if (landmarkData[landmarkName]) {
-              psaOnlyLandmarks[landmarkName] = landmarkData[landmarkName];
+              psoOnlyLandmarks[landmarkName] = landmarkData[landmarkName];
             }
           });
 
-          console.log('Filtered PSA landmarks:', psaOnlyLandmarks);
-          console.log('Filtered count:', Object.keys(psaOnlyLandmarks).length);
-          setLandmarks(psaOnlyLandmarks);
+          console.log('Filtered PSO landmarks:', psoOnlyLandmarks);
+          console.log('Filtered count:', Object.keys(psoOnlyLandmarks).length);
+          setLandmarks(psoOnlyLandmarks);
 
           // 랜드마크가 모두 있으면 currentIndex를 마지막으로 설정
-          if (Object.keys(psaOnlyLandmarks).length === PSA_LANDMARKS.length) {
-            setCurrentIndex(PSA_LANDMARKS.length);
+          if (Object.keys(psoOnlyLandmarks).length === PSO_LANDMARKS.length) {
+            setCurrentIndex(PSO_LANDMARKS.length);
           } else {
             // 일부만 있으면 다음 입력할 인덱스로 설정
-            setCurrentIndex(Object.keys(psaOnlyLandmarks).length);
+            setCurrentIndex(Object.keys(psoOnlyLandmarks).length);
           }
         } catch (error) {
-          console.error('Failed to parse PSA landmark data:', error);
+          console.error('Failed to parse PSO landmark data:', error);
         }
       }
 
       // 첫 번째 랜드마크 음성 안내 (기존 랜드마크가 없을 때만)
       if (!storedLandmarkData && 'speechSynthesis' in window) {
         setTimeout(() => {
-          const utterance = new SpeechSynthesisUtterance(PSA_LANDMARKS[0]);
+          const utterance = new SpeechSynthesisUtterance(PSO_LANDMARKS[0]);
           utterance.lang = 'ko-KR';
           utterance.rate = 1.5;
           speechSynthesis.speak(utterance);
@@ -127,7 +127,7 @@ export default function PSAAnalysisPage() {
 
   // 기하학적 분석 수행
   useEffect(() => {
-    if (Object.keys(landmarks).length === PSA_LANDMARKS.length) {
+    if (Object.keys(landmarks).length === PSO_LANDMARKS.length) {
       performGeometricAnalysis();
     }
   }, [landmarks]);
@@ -180,9 +180,9 @@ export default function PSAAnalysisPage() {
 
   // 랜드마크 추가
   const handleAddLandmark = (x: number, y: number) => {
-    if (currentIndex >= PSA_LANDMARKS.length) return;
+    if (currentIndex >= PSO_LANDMARKS.length) return;
 
-    const landmarkName = PSA_LANDMARKS[currentIndex];
+    const landmarkName = PSO_LANDMARKS[currentIndex];
     setLandmarks(prev => ({
       ...prev,
       [landmarkName]: { x, y }
@@ -195,8 +195,8 @@ export default function PSAAnalysisPage() {
 
   // 음성 안내 함수
   const speakGuide = (nextIndex: number) => {
-    if (nextIndex < PSA_LANDMARKS.length && 'speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(PSA_LANDMARKS[nextIndex]);
+    if (nextIndex < PSO_LANDMARKS.length && 'speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(PSO_LANDMARKS[nextIndex]);
       utterance.lang = 'ko-KR';
       utterance.rate = 0.9;
       speechSynthesis.speak(utterance);
@@ -205,7 +205,7 @@ export default function PSAAnalysisPage() {
 
   // 랜드마크 삭제
   const handleDeleteLandmark = (landmarkName: string) => {
-    const index = PSA_LANDMARKS.indexOf(landmarkName);
+    const index = PSO_LANDMARKS.indexOf(landmarkName);
     if (index === -1) return;
 
     // 삭제 확인
@@ -214,7 +214,7 @@ export default function PSAAnalysisPage() {
     // 해당 랜드마크와 그 이후 랜드마크들 모두 삭제
     const newLandmarks: Record<string, { x: number; y: number }> = {};
     for (let i = 0; i < index; i++) {
-      const name = PSA_LANDMARKS[i];
+      const name = PSO_LANDMARKS[i];
       if (landmarks[name]) {
         newLandmarks[name] = landmarks[name];
       }
@@ -246,7 +246,7 @@ export default function PSAAnalysisPage() {
   // 뒤로 가기
   const handleUndo = () => {
     if (currentIndex > 0) {
-      const lastLandmark = PSA_LANDMARKS[currentIndex - 1];
+      const lastLandmark = PSO_LANDMARKS[currentIndex - 1];
       const newLandmarks = { ...landmarks };
       delete newLandmarks[lastLandmark];
       setLandmarks(newLandmarks);
@@ -257,47 +257,47 @@ export default function PSAAnalysisPage() {
 
   // 분석 완료 및 저장
   const completeAnalysis = async () => {
-    if (Object.keys(landmarks).length < PSA_LANDMARKS.length) {
+    if (Object.keys(landmarks).length < PSO_LANDMARKS.length) {
       alert('모든 랜드마크를 설정해주세요.');
       return;
     }
 
-    // Canvas에서 PSA 분석 이미지 생성
+    // Canvas에서 PSO 분석 이미지 생성
     const canvas = document.getElementById('psaCanvas') as HTMLCanvasElement;
     let imageDataUrl = '';
     let s3AnnotatedUrl = '';
 
     if (canvas) {
       imageDataUrl = canvas.toDataURL('image/png');
-      console.log('Generated canvas Data URL for PSA image');
+      console.log('Generated canvas Data URL for PSO image');
     } else {
       throw new Error('Canvas를 찾을 수 없습니다.');
     }
 
-    // S3에 PSA 이미지 업로드
+    // S3에 PSO 이미지 업로드
     if (imageDataUrl) {
       try {
-        const uploadResponse = await fetch('/api/psa/upload-image', {
+        const uploadResponse = await fetch('/api/pso/upload-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             imageData: imageDataUrl,
-            fileName: fileName || 'psa_analysis.png',
-            type: 'psa'
+            fileName: fileName || 'pso_analysis.png',
+            type: 'pso'
           }),
         });
 
         if (uploadResponse.ok) {
           const uploadResult = await uploadResponse.json();
           s3AnnotatedUrl = uploadResult.s3Url;
-          console.log('PSA image uploaded to S3:', s3AnnotatedUrl);
+          console.log('PSO image uploaded to S3:', s3AnnotatedUrl);
         } else {
           const errorResult = await uploadResponse.json();
-          console.error('Failed to upload PSA image to S3:', errorResult);
-          throw new Error(`PSA 이미지 업로드 실패: ${errorResult.message || '알 수 없는 오류'}`);
+          console.error('Failed to upload PSO image to S3:', errorResult);
+          throw new Error(`PSO 이미지 업로드 실패: ${errorResult.message || '알 수 없는 오류'}`);
         }
       } catch (error) {
-        console.error('Error uploading PSA image to S3:', error);
+        console.error('Error uploading PSO image to S3:', error);
         throw error;
       }
     } else {
@@ -309,7 +309,7 @@ export default function PSAAnalysisPage() {
 
     const analysisData = {
       analysisId: existingAnalysisId || undefined, // 업데이트용 ID
-      type: 'PSA',
+      type: 'PSO',
       patientName,
       patientBirthDate,
       fileName,
@@ -323,45 +323,45 @@ export default function PSAAnalysisPage() {
       timestamp: new Date().toISOString()
     };
 
-    console.log('💾 Saving PSA analysis:', {
+    console.log('💾 Saving PSO analysis:', {
       mode: existingAnalysisId ? 'UPDATE' : 'CREATE',
       analysisId: existingAnalysisId || 'NEW'
     });
 
     // API로 저장 (먼저 DB에 저장)
     try {
-      const response = await fetch('/api/psa/save', {
+      const response = await fetch('/api/pso/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(analysisData)
       });
 
       if (response.ok) {
-        console.log('✅ PSA 분석이 DB에 저장되었습니다.');
+        console.log('✅ PSO 분석이 DB에 저장되었습니다.');
 
         // DB 저장 성공 후 Dashboard로 데이터 전송
         if (window.opener) {
           window.opener.postMessage({
-            type: 'PSA_ANALYSIS_COMPLETE',
+            type: 'PSO_ANALYSIS_COMPLETE',
             data: analysisData
           }, '*');
-          console.log('✅ Dashboard에 PSA 완료 메시지 전송');
+          console.log('✅ Dashboard에 PSO 완료 메시지 전송');
         }
 
         // BroadcastChannel로 모든 탭에 알림 (분석이력 자동 새로고침)
         const channel = new BroadcastChannel('analysis_updates');
-        channel.postMessage({ type: 'ANALYSIS_SAVED', analysisType: 'PSA' });
+        channel.postMessage({ type: 'ANALYSIS_SAVED', analysisType: 'PSO' });
         channel.close();
-        console.log('✅ BroadcastChannel: 모든 탭에 PSA 저장 알림');
+        console.log('✅ BroadcastChannel: 모든 탭에 PSO 저장 알림');
 
-        alert('PSA 분석이 저장되었습니다.');
+        alert('PSO 분석이 저장되었습니다.');
         window.close();
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || 'DB 저장 실패');
       }
     } catch (error) {
-      console.error('❌ Error saving PSA analysis:', error);
+      console.error('❌ Error saving PSO analysis:', error);
       alert('저장 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
     }
   };
@@ -373,12 +373,12 @@ export default function PSAAnalysisPage() {
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <h1 className="text-lg font-bold">
-              PSA 분석 설정
+              PSO 분석 설정
             </h1>
             <GuideMessage
-              currentLandmark={PSA_LANDMARKS[currentIndex]}
+              currentLandmark={PSO_LANDMARKS[currentIndex]}
               currentIndex={currentIndex}
-              totalLandmarks={PSA_LANDMARKS.length}
+              totalLandmarks={PSO_LANDMARKS.length}
             />
           </div>
           <div className="flex space-x-2">
@@ -420,7 +420,7 @@ export default function PSAAnalysisPage() {
               <div className="relative">
                 <img
                   src="/images/landmarks/psa_diagram.png"
-                  alt="PSA Reference"
+                  alt="PSO Reference"
                   className="w-full object-contain cursor-pointer"
                   onDoubleClick={() => setIsReferencePopup(true)}
                 />
@@ -433,7 +433,7 @@ export default function PSAAnalysisPage() {
               <div className="bg-gray-800 rounded-lg p-3">
                 <h3 className="text-sm font-bold mb-2 text-gray-300">랜드마크 진행 상황</h3>
                 <div className="space-y-1 max-h-[400px] overflow-y-auto">
-                  {PSA_LANDMARKS.map((landmark, index) => {
+                  {PSO_LANDMARKS.map((landmark, index) => {
                     const isCompleted = index < currentIndex;
                     const isCurrent = index === currentIndex;
                     const landmarkNumber = index + 1;
@@ -462,18 +462,18 @@ export default function PSAAnalysisPage() {
                 <div className="mt-3 pt-3 border-t border-gray-700">
                   <div className="flex justify-between text-xs">
                     <span className="text-green-400">완료: {currentIndex}개</span>
-                    <span className="text-yellow-400">남음: {PSA_LANDMARKS.length - currentIndex}개</span>
+                    <span className="text-yellow-400">남음: {PSO_LANDMARKS.length - currentIndex}개</span>
                   </div>
                   <div className="mt-2 w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-300"
-                      style={{ width: `${(currentIndex / PSA_LANDMARKS.length) * 100}%` }}
+                      style={{ width: `${(currentIndex / PSO_LANDMARKS.length) * 100}%` }}
                     />
                   </div>
                 </div>
 
                 {/* 분석 결과 */}
-                {Object.keys(landmarks).length === PSA_LANDMARKS.length && (
+                {Object.keys(landmarks).length === PSO_LANDMARKS.length && (
                   <div className="mt-3 pt-3 border-t border-gray-700">
                     <h4 className="text-sm font-bold mb-2 text-yellow-400">분석 결과</h4>
                     <div className="space-y-1 text-xs">
@@ -516,7 +516,7 @@ export default function PSAAnalysisPage() {
               }
             }}
             onCanvasMouseMove={setCanvasMousePos}
-            psaLandmarks={PSA_LANDMARKS}
+            psaLandmarks={PSO_LANDMARKS}
             showGeometry={showGeometry}
           />
 
@@ -550,7 +550,7 @@ export default function PSAAnalysisPage() {
           </button>
           <button
             onClick={completeAnalysis}
-            disabled={Object.keys(landmarks).length < PSA_LANDMARKS.length}
+            disabled={Object.keys(landmarks).length < PSO_LANDMARKS.length}
             className="px-4 py-1.5 bg-green-600 rounded text-sm hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
             분석 완료
@@ -580,7 +580,7 @@ export default function PSAAnalysisPage() {
           <div className="relative max-w-[90vw] max-h-[90vh]">
             <img
               src="/images/landmarks/psa_diagram.png"
-              alt="PSA Reference"
+              alt="PSO Reference"
               className="w-full h-full object-contain"
               style={{ transform: 'scale(1.1)' }}
             />

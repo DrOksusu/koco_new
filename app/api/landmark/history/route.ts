@@ -27,21 +27,26 @@ export async function GET(request: NextRequest) {
       const landmarksData = analysis.landmarksData as Record<string, { x: number; y: number }> | null;
       const anglesData = analysis.anglesData as Record<string, number> | null;
 
-      // PSA 분석인지 확인 (PSA_ 접두사가 있는 랜드마크 확인)
+      // 분석 타입 확인 (PSA_, PSO_ 접두사가 있는 랜드마크 확인)
       const landmarks = landmarksData || {};
       const isPSA = Object.keys(landmarks).some(key => key.startsWith('PSA_'));
+      const isPSO = Object.keys(landmarks).some(key => key.startsWith('PSO_'));
+
+      // 분석 타입 결정
+      const analysisType = isPSA ? 'PSA' : isPSO ? 'PSO' : 'LANDMARK';
 
       // 각도 데이터 변환
       const angles: Record<string, number> = {};
       let geometry: { guideZone?: number; bufferZone?: number } | undefined;
 
-      if (isPSA && anglesData) {
-        // PSA 분석의 경우 geometry 객체 생성
+      if ((isPSA || isPSO) && anglesData) {
+        // PSA/PSO 분석의 경우 geometry 객체 생성
         geometry = {};
+        const prefix = isPSA ? 'PSA_' : 'PSO_';
         Object.entries(anglesData).forEach(([angleName, angleValue]) => {
-          if (angleName === 'PSA_Guide_Zone_D1') {
+          if (angleName === `${prefix}Guide_Zone_D1`) {
             geometry!.guideZone = Number(angleValue);
-          } else if (angleName === 'PSA_Buffer_Zone_D2') {
+          } else if (angleName === `${prefix}Buffer_Zone_D2`) {
             geometry!.bufferZone = Number(angleValue);
           } else {
             angles[angleName] = Number(angleValue);
@@ -56,22 +61,24 @@ export async function GET(request: NextRequest) {
 
       return {
         id: analysis.id.toString(),
-        type: isPSA ? 'PSA' : 'LANDMARK',
+        type: analysisType,
         title: analysis.fileName || `Analysis ${analysis.analysisCode}`,
         description: `Patient: ${analysis.patientName}`,
         status: analysis.analysisStatus || 'COMPLETED',
         result: {
           landmarks,
-          angles: isPSA ? undefined : angles, // PSA는 angles 대신 geometry 사용
-          geometry: isPSA ? geometry : undefined, // PSA만 geometry 포함
+          angles: angles, // 모든 분석 타입에 angles 포함
+          geometry: (isPSA || isPSO) ? geometry : undefined, // PSA/PSO만 geometry 포함
           analysisCode: analysis.analysisCode,
-          imageUrl: analysis.originalImageUrl || analysis.annotatedImageUrl || '', // 원본 이미지 우선
+          imageUrl: analysis.originalImageUrl || '', // 원본 이미지
           originalImageUrl: analysis.originalImageUrl || '', // 원본 이미지 URL
-          annotatedImageUrl: analysis.annotatedImageUrl || '', // 랜드마크 이미지 URL
+          landmarkImageUrl: analysis.landmarkImageUrl || '', // Landmark 전용 이미지
+          psaImageUrl: analysis.psaImageUrl || '', // PSA 전용 이미지
+          psoImageUrl: analysis.psoImageUrl || '', // PSO 전용 이미지
           fileName: analysis.fileName,
           patientName: analysis.patientName,
           patientBirthDate: analysis.patientBirthDate,
-          type: isPSA ? 'PSA' : 'LANDMARK' // result 내에도 type 추가
+          type: analysisType // result 내에도 type 추가
         },
         createdAt: analysis.createdAt?.toISOString() || new Date().toISOString()
       };

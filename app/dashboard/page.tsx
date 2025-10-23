@@ -104,10 +104,12 @@ export default function DashboardPage() {
   const [patientBirthDate, setPatientBirthDate] = useState('');
   const [landmarkResultImage, setLandmarkResultImage] = useState<string | null>(null);
   const [psaResultImage, setPsaResultImage] = useState<string | null>(null);
-  // 진단 완료 파일들 (원본, Landmark, PSA)
+  const [psoResultImage, setPsoResultImage] = useState<string | null>(null);
+  // 진단 완료 파일들 (원본, Landmark, PSA, PSO)
   const [originalResultImage, setOriginalResultImage] = useState<string | null>(null);
   const [uploadedLandmarkResult, setUploadedLandmarkResult] = useState<string | null>(null);
   const [uploadedPsaResult, setUploadedPsaResult] = useState<string | null>(null);
+  const [uploadedPsoResult, setUploadedPsoResult] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // 환자 정보 자동 저장 (debounced) - 분석 레코드가 있을 때만
@@ -189,6 +191,23 @@ export default function DashboardPage() {
         // PSA 분석 데이터도 저장 (필요한 경우)
         if (event.data.data.landmarks) {
           localStorage.setItem('psaAnalysisData', JSON.stringify({
+            landmarks: event.data.data.landmarks,
+            lines: event.data.data.lines,
+            timestamp: event.data.data.timestamp
+          }));
+        }
+      } else if (event.data.type === 'PSO_ANALYSIS_COMPLETE') {
+        console.log('Received PSO analysis data:', event.data.data);
+
+        // PSO 분석 완료 이미지 저장
+        if (event.data.data.annotatedImageUrl) {
+          setPsoResultImage(event.data.data.annotatedImageUrl);
+          setUploadedPsoResult(event.data.data.annotatedImageUrl); // 진단 완료 섹션에도 표시
+        }
+
+        // PSO 분석 데이터도 저장 (필요한 경우)
+        if (event.data.data.landmarks) {
+          localStorage.setItem('psoAnalysisData', JSON.stringify({
             landmarks: event.data.data.landmarks,
             lines: event.data.data.lines,
             timestamp: event.data.data.timestamp
@@ -292,23 +311,34 @@ export default function DashboardPage() {
           console.log('Preview URLs set to:', [signedUrl]);
         });
 
-        // 랜드마크가 표시된 이미지 처리
-        if (data.annotatedImageUrl) {
-          console.log('Processing annotated image URL:', data.annotatedImageUrl);
-          console.log('Analysis type:', data.type);
+        // 랜드마크가 표시된 이미지 처리 (타입별 전용 URL 사용)
+        console.log('📥 Processing analysis images:', {
+          type: data.type,
+          landmarkImageUrl: data.landmarkImageUrl,
+          psaImageUrl: data.psaImageUrl,
+          psoImageUrl: data.psoImageUrl,
+          annotatedImageUrl: data.annotatedImageUrl // 호환성 체크용
+        });
 
-          // 분석 타입에 따라 다른 이미지 상태에 저장
-          if (data.type === 'PSA') {
-            // PSA 분석인 경우
-            setPsaResultImage(data.annotatedImageUrl);
-            setUploadedPsaResult(data.annotatedImageUrl); // 진단 완료 섹션에도 표시
-            console.log('PSA result image URL set:', data.annotatedImageUrl);
-          } else {
-            // Landmark 분석인 경우
-            setLandmarkResultImage(data.annotatedImageUrl);
-            setUploadedLandmarkResult(data.annotatedImageUrl); // 진단 완료 섹션에도 표시
-            console.log('Landmark result image URL set:', data.annotatedImageUrl);
-          }
+        // Landmark 이미지 설정
+        if (data.landmarkImageUrl) {
+          setLandmarkResultImage(data.landmarkImageUrl);
+          setUploadedLandmarkResult(data.landmarkImageUrl);
+          console.log('✅ Landmark image URL set:', data.landmarkImageUrl);
+        }
+
+        // PSA 이미지 설정
+        if (data.psaImageUrl) {
+          setPsaResultImage(data.psaImageUrl);
+          setUploadedPsaResult(data.psaImageUrl);
+          console.log('✅ PSA image URL set:', data.psaImageUrl);
+        }
+
+        // PSO 이미지 설정
+        if (data.psoImageUrl) {
+          setPsoResultImage(data.psoImageUrl);
+          setUploadedPsoResult(data.psoImageUrl);
+          console.log('✅ PSO image URL set:', data.psoImageUrl);
         }
       }
 
@@ -530,6 +560,17 @@ export default function DashboardPage() {
             console.log('✅ PSA: 새 분석 생성');
           }
 
+          // 새 PSA 분석을 위해 이전 PSA 데이터 삭제 (sessionStorage & localStorage)
+          console.log('🧹 Clearing PSA data before opening window...');
+          console.log('Before clear - sessionStorage keys:', Object.keys(sessionStorage));
+          sessionStorage.removeItem('psaLandmarkData');
+          sessionStorage.removeItem('psaReEdit');
+          sessionStorage.removeItem('psaAnalysisData');
+          sessionStorage.removeItem('landmarkData'); // 일반 랜드마크 데이터도 삭제
+          localStorage.removeItem('psaAnalysisData'); // localStorage도 삭제
+          console.log('After clear - sessionStorage keys:', Object.keys(sessionStorage));
+          console.log('🗑️ Cleared old PSA data for new analysis (session & local storage)');
+
           // 새 창으로 열기
           const newWindow = window.open('/psa', '_blank',
             'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
@@ -579,6 +620,17 @@ export default function DashboardPage() {
                 console.log('✅ PSA: 새 분석 생성');
               }
 
+              // 새 PSA 분석을 위해 이전 PSA 데이터 삭제 (sessionStorage & localStorage)
+              console.log('🧹 Clearing PSA data before opening window...');
+              console.log('Before clear - sessionStorage keys:', Object.keys(sessionStorage));
+              sessionStorage.removeItem('psaLandmarkData');
+              sessionStorage.removeItem('psaReEdit');
+              sessionStorage.removeItem('psaAnalysisData');
+              sessionStorage.removeItem('landmarkData'); // 일반 랜드마크 데이터도 삭제
+              localStorage.removeItem('psaAnalysisData'); // localStorage도 삭제
+              console.log('After clear - sessionStorage keys:', Object.keys(sessionStorage));
+              console.log('🗑️ Cleared old PSA data for new analysis (session & local storage)');
+
               // 새 창으로 열기
               const newWindow = window.open('/psa', '_blank',
                 'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
@@ -602,13 +654,115 @@ export default function DashboardPage() {
       }
       // PSO 분석
       else if (type === 'PSO') {
-        console.log('PSO 분석 시작:', { diagnosisType: type, files: uploadedFiles });
+        const file = uploadedFiles[0];
 
-        // PSO는 추후 구현
-        setTimeout(() => {
+        // 이력에서 온 파일인 경우
+        if ((file as any).isFromHistory && previewUrls[0]) {
+          sessionStorage.setItem('xrayImage', previewUrls[0]);
+          sessionStorage.setItem('xrayFileName', file.name);
+          sessionStorage.setItem('patientName', patientName);
+          sessionStorage.setItem('patientBirthDate', patientBirthDate);
+
+          // 기존 분석 ID가 있으면 전달 (업데이트용)
+          if (analysisData?.analysisId) {
+            sessionStorage.setItem('analysisId', analysisData.analysisId);
+            console.log('✅ PSO: 기존 분석 업데이트 (ID:', analysisData.analysisId, ')');
+          } else {
+            sessionStorage.removeItem('analysisId');
+            console.log('✅ PSO: 새 분석 생성');
+          }
+
+          // 새 PSO 분석을 위해 이전 PSO 데이터 삭제 (sessionStorage & localStorage)
+          console.log('🧹 Clearing PSO data before opening window...');
+          console.log('Before clear - sessionStorage keys:', Object.keys(sessionStorage));
+          sessionStorage.removeItem('psoLandmarkData');
+          sessionStorage.removeItem('psoReEdit');
+          sessionStorage.removeItem('psoAnalysisData');
+          sessionStorage.removeItem('landmarkData'); // 일반 랜드마크 데이터도 삭제
+          localStorage.removeItem('psoAnalysisData'); // localStorage도 삭제
+          console.log('After clear - sessionStorage keys:', Object.keys(sessionStorage));
+          console.log('🗑️ Cleared old PSO data for new analysis (session & local storage)');
+
+          // 새 창으로 열기
+          const newWindow = window.open('/pso', '_blank',
+            'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
+
+          if (newWindow) {
+            newWindow.focus();
+          } else {
+            alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+          }
+
           setIsProcessing(false);
-          alert('PSO 분석은 준비 중입니다.');
-        }, 1000);
+        } else {
+          // 일반 파일 업로드인 경우 - S3에 직접 업로드
+          try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', 'ok4192ok@gmail.com'); // 실제로는 세션에서 가져와야 함
+
+            const uploadResponse = await fetch('/api/upload/file', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (uploadResponse.ok) {
+              const uploadResult = await uploadResponse.json();
+              const s3Url = uploadResult.s3Url;
+
+              console.log('Dashboard - File uploaded to S3:', {
+                s3Url,
+                fileName: file.name,
+                patientName,
+                patientBirthDate
+              });
+
+              // S3 URL을 sessionStorage에 저장 (Data URL 대신)
+              sessionStorage.setItem('xrayImage', s3Url);
+              sessionStorage.setItem('xrayFileName', file.name);
+              sessionStorage.setItem('patientName', patientName);
+              sessionStorage.setItem('patientBirthDate', patientBirthDate);
+
+              // 기존 분석 ID가 있으면 전달 (업데이트용)
+              if (analysisData?.analysisId) {
+                sessionStorage.setItem('analysisId', analysisData.analysisId);
+                console.log('✅ PSO: 기존 분석 업데이트 (ID:', analysisData.analysisId, ')');
+              } else {
+                sessionStorage.removeItem('analysisId');
+                console.log('✅ PSO: 새 분석 생성');
+              }
+
+              // 새 PSO 분석을 위해 이전 PSO 데이터 삭제 (sessionStorage & localStorage)
+              console.log('🧹 Clearing PSO data before opening window...');
+              console.log('Before clear - sessionStorage keys:', Object.keys(sessionStorage));
+              sessionStorage.removeItem('psoLandmarkData');
+              sessionStorage.removeItem('psoReEdit');
+              sessionStorage.removeItem('psoAnalysisData');
+              sessionStorage.removeItem('landmarkData'); // 일반 랜드마크 데이터도 삭제
+              localStorage.removeItem('psoAnalysisData'); // localStorage도 삭제
+              console.log('After clear - sessionStorage keys:', Object.keys(sessionStorage));
+              console.log('🗑️ Cleared old PSO data for new analysis (session & local storage)');
+
+              // 새 창으로 열기
+              const newWindow = window.open('/pso', '_blank',
+                'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
+
+              if (newWindow) {
+                newWindow.focus();
+              } else {
+                alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+              }
+            } else {
+              console.error('Failed to upload file to S3');
+              alert('파일 업로드에 실패했습니다.');
+            }
+          } catch (error) {
+            console.error('Error uploading file:', error);
+            alert('파일 업로드 중 오류가 발생했습니다.');
+          } finally {
+            setIsProcessing(false);
+          }
+        }
       }
     }
   };
@@ -1085,16 +1239,35 @@ export default function DashboardPage() {
               <div
                 className="relative border border-gray-300 rounded overflow-hidden bg-gray-50 cursor-pointer"
                 style={{ aspectRatio: '1706/1373', height: 'auto' }}
-                onDoubleClick={() => {
+                onDoubleClick={async () => {
                   if (!uploadedPsaResult) return;
 
                   console.log('=== PSA DOUBLE CLICKED ===');
                   console.log('uploadedPsaResult:', uploadedPsaResult);
                   console.log('originalResultImage:', originalResultImage);
 
+                  // S3 URL인 경우 새로운 서명된 URL 가져오기
+                  let imageUrlToUse = originalResultImage;
+                  if (originalResultImage && (originalResultImage.includes('.s3.') || originalResultImage.includes('s3.amazonaws.com'))) {
+                    try {
+                      const response = await fetch('/api/landmark/signed-url', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageUrl: originalResultImage })
+                      });
+                      const result = await response.json();
+                      if (result.success) {
+                        imageUrlToUse = result.signedUrl;
+                        console.log('✅ Got fresh signed URL for PSA');
+                      }
+                    } catch (error) {
+                      console.error('Failed to get signed URL:', error);
+                    }
+                  }
+
                   // 원본 이미지와 환자 정보를 sessionStorage에 저장
-                  if (originalResultImage) {
-                    sessionStorage.setItem('xrayImage', originalResultImage);
+                  if (imageUrlToUse) {
+                    sessionStorage.setItem('xrayImage', imageUrlToUse);
                   }
                   if (uploadedFiles[0]) {
                     sessionStorage.setItem('xrayFileName', uploadedFiles[0].name);
@@ -1102,28 +1275,33 @@ export default function DashboardPage() {
                   sessionStorage.setItem('patientName', patientName);
                   sessionStorage.setItem('patientBirthDate', patientBirthDate);
 
-                  // PSA 분석 데이터를 sessionStorage에 저장
-                  const psaData = localStorage.getItem('psaAnalysisData');
-                  console.log('PSA data from localStorage:', psaData);
+                  // PSA 분석 데이터를 analysisData에서 가져오기
+                  console.log('PSA re-edit - analysisData:', analysisData);
 
-                  if (psaData) {
-                    const parsedPsaData = JSON.parse(psaData);
+                  if (analysisData && analysisData.landmarks) {
+                    const landmarksData = analysisData.landmarks;
 
-                    // PSA 전용 랜드마크 데이터 저장 (6개 포인트)
-                    if (parsedPsaData.landmarks) {
-                      console.log('Saving PSA landmarks:', parsedPsaData.landmarks);
-                      sessionStorage.setItem('psaLandmarkData', JSON.stringify(parsedPsaData.landmarks));
+                    // PSA_ 접두사가 있는 랜드마크만 필터링
+                    const psaLandmarks: Record<string, { x: number; y: number }> = {};
+                    Object.entries(landmarksData).forEach(([key, value]) => {
+                      if (key.startsWith('PSA_') || [
+                        'Porion', 'Orbitale', 'Hinge Point',
+                        'Mn.1 Crown', 'Mn.6 Distal', 'Symphysis Lingual'
+                      ].includes(key)) {
+                        psaLandmarks[key] = value as { x: number; y: number };
+                      }
+                    });
+
+                    console.log('Filtered PSA landmarks:', psaLandmarks);
+                    console.log('PSA landmarks count:', Object.keys(psaLandmarks).length);
+
+                    // PSA 전용 랜드마크 데이터 저장
+                    if (Object.keys(psaLandmarks).length > 0) {
+                      sessionStorage.setItem('psaLandmarkData', JSON.stringify(psaLandmarks));
+                      console.log('✅ PSA landmarks saved to sessionStorage');
                     }
-
-                    const psaDataToSave = {
-                      ...parsedPsaData,
-                      patientName,
-                      patientBirthDate,
-                      imageUrl: originalResultImage,
-                      annotatedImageUrl: uploadedPsaResult
-                    };
-                    console.log('Saving PSA data to sessionStorage:', psaDataToSave);
-                    sessionStorage.setItem('psaAnalysisData', JSON.stringify(psaDataToSave));
+                  } else {
+                    console.warn('⚠️ No PSA landmarks found in analysisData');
                   }
 
                   // PSA 재편집 플래그 설정
@@ -1156,6 +1334,119 @@ export default function DashboardPage() {
 
                 {/* 완료 표시 오버레이 */}
                 {uploadedPsaResult && (
+                  <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-md pointer-events-none">
+                    ✓ 분석 완료
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* PSO 분석 결과 */}
+            <div className="flex-1">
+              <h3 className="text-xs font-medium text-gray-700 mb-1">
+                PSO
+                <span className="ml-2 text-xs text-blue-600">
+                  {uploadedPsoResult ? '(더블클릭하여 수정)' : '(분석 필요)'}
+                </span>
+              </h3>
+              <div
+                className="relative border border-gray-300 rounded overflow-hidden bg-gray-50 cursor-pointer"
+                style={{ aspectRatio: '1706/1373', height: 'auto' }}
+                onDoubleClick={async () => {
+                  if (!uploadedPsoResult) return;
+
+                  console.log('=== PSO DOUBLE CLICKED ===');
+                  console.log('uploadedPsoResult:', uploadedPsoResult);
+                  console.log('originalResultImage:', originalResultImage);
+
+                  // S3 URL인 경우 새로운 서명된 URL 가져오기
+                  let imageUrlToUse = originalResultImage;
+                  if (originalResultImage && (originalResultImage.includes('.s3.') || originalResultImage.includes('s3.amazonaws.com'))) {
+                    try {
+                      const response = await fetch('/api/landmark/signed-url', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageUrl: originalResultImage })
+                      });
+                      const result = await response.json();
+                      if (result.success) {
+                        imageUrlToUse = result.signedUrl;
+                        console.log('✅ Got fresh signed URL for PSO');
+                      }
+                    } catch (error) {
+                      console.error('Failed to get signed URL:', error);
+                    }
+                  }
+
+                  // 원본 이미지와 환자 정보를 sessionStorage에 저장
+                  if (imageUrlToUse) {
+                    sessionStorage.setItem('xrayImage', imageUrlToUse);
+                  }
+                  if (uploadedFiles[0]) {
+                    sessionStorage.setItem('xrayFileName', uploadedFiles[0].name);
+                  }
+                  sessionStorage.setItem('patientName', patientName);
+                  sessionStorage.setItem('patientBirthDate', patientBirthDate);
+
+                  // PSO 분석 데이터를 analysisData에서 가져오기
+                  console.log('PSO re-edit - analysisData:', analysisData);
+
+                  if (analysisData && analysisData.landmarks) {
+                    const landmarksData = analysisData.landmarks;
+
+                    // PSO_ 접두사가 있는 랜드마크만 필터링
+                    const psoLandmarks: Record<string, { x: number; y: number }> = {};
+                    Object.entries(landmarksData).forEach(([key, value]) => {
+                      if (key.startsWith('PSO_') || [
+                        'Porion', 'Orbitale', 'Hinge Point',
+                        'Mn.1 Crown', 'Mn.6 Distal', 'Symphysis Lingual'
+                      ].includes(key)) {
+                        psoLandmarks[key] = value as { x: number; y: number };
+                      }
+                    });
+
+                    console.log('Filtered PSO landmarks:', psoLandmarks);
+                    console.log('PSO landmarks count:', Object.keys(psoLandmarks).length);
+
+                    // PSO 전용 랜드마크 데이터 저장
+                    if (Object.keys(psoLandmarks).length > 0) {
+                      sessionStorage.setItem('psoLandmarkData', JSON.stringify(psoLandmarks));
+                      console.log('✅ PSO landmarks saved to sessionStorage');
+                    }
+                  } else {
+                    console.warn('⚠️ No PSO landmarks found in analysisData');
+                  }
+
+                  // PSO 재편집 플래그 설정
+                  sessionStorage.setItem('psoReEdit', 'true');
+
+                  // PSO 페이지를 새 창으로 열기
+                  const newWindow = window.open('/pso', '_blank',
+                    'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
+
+                  if (newWindow) {
+                    newWindow.focus();
+                  } else {
+                    alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+                  }
+                }}
+              >
+                {uploadedPsoResult ? (
+                  <S3Image
+                    src={uploadedPsoResult}
+                    alt="PSO Result"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <img
+                    src="/images/placeholders/sample_psa.jpg"
+                    alt="Sample PSO"
+                    className="w-full h-full object-contain opacity-40"
+                  />
+                )}
+
+                {/* 완료 표시 오버레이 */}
+                {uploadedPsoResult && (
                   <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-md pointer-events-none">
                     ✓ 분석 완료
                   </div>

@@ -5,11 +5,61 @@ import { useMeasurementStore } from '@/store/measurementStore';
 import { MEASUREMENT_DATA, CATEGORIES } from '@/lib/constants/measurements';
 import Tooltip from '@/components/ui/Tooltip';
 import clsx from 'clsx';
+import { MeasurementDefinition, TooltipData } from '@/types/measurementDefinition.types';
 
 export default function MeasurementTable() {
-  const { measurements, updateSingleMeasurement } = useMeasurementStore();
+  const {
+    measurements,
+    updateSingleMeasurement,
+    definitions,
+    fetchDefinitions,
+    definitionsLoading
+  } = useMeasurementStore();
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [tempValue, setTempValue] = useState<string>('');
+
+  // Fetch definitions on mount
+  useEffect(() => {
+    fetchDefinitions();
+  }, [fetchDefinitions]);
+
+  // Convert definition to rich tooltip data
+  const convertToTooltipData = (def: MeasurementDefinition): TooltipData => {
+    let normalRange = '';
+    if (def.normalRangeMin !== null && def.normalRangeMax !== null) {
+      normalRange = `${def.normalRangeMin}~${def.normalRangeMax}${def.unit}`;
+    }
+
+    return {
+      title: def.titleKo || def.name,
+      fullName: def.fullName || undefined,
+      description: def.description || undefined,
+      normalRange: normalRange || undefined,
+      interpretation: {
+        high: def.interpretationHigh || undefined,
+        low: def.interpretationLow || undefined
+      },
+      clinicalNote: def.clinicalNote || undefined,
+      measurementMethod: def.measurementMethod || undefined
+    };
+  };
+
+  // Use definitions from DB if available, otherwise fall back to hardcoded data
+  const displayData = definitions.length > 0
+    ? definitions.map(def => ({
+        name: def.name,
+        category: def.category,
+        unit: def.unit,
+        meanValue: def.meanValue,
+        tooltipData: convertToTooltipData(def)
+      }))
+    : MEASUREMENT_DATA.map(item => ({
+        name: item.name,
+        category: item.category,
+        unit: item.unit,
+        meanValue: item.meanDegree || item.meanLength || 0,
+        tooltipData: item.tooltip // fallback to simple string
+      }));
 
   const getCategoryStyle = (category: string) => {
     return CATEGORIES[category] || CATEGORIES.blue;
@@ -74,37 +124,47 @@ export default function MeasurementTable() {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {MEASUREMENT_DATA.map((item, index) => {
-            const currentValue = measurements[item.name];
-            const meanValue = item.meanDegree || item.meanLength || 0;
-            const categoryStyle = getCategoryStyle(item.category);
+          {definitionsLoading ? (
+            <tr>
+              <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
+                  <span>계측값 정의를 불러오는 중...</span>
+                </div>
+              </td>
+            </tr>
+          ) : (
+            displayData.map((item, index) => {
+              const currentValue = measurements[item.name];
+              const meanValue = item.meanValue || 0;
+              const categoryStyle = getCategoryStyle(item.category);
 
-            return (
-              <tr
-                key={`${item.name}-${index}`}
-                className="hover:bg-gray-50 transition-all duration-150"
-              >
-                <td className="px-4 py-3 whitespace-nowrap">
-                  <Tooltip content={item.tooltip} position="right">
-                    <span className="text-sm font-medium text-gray-900 cursor-help">
-                      {item.name}
+              return (
+                <tr
+                  key={`${item.name}-${index}`}
+                  className="hover:bg-gray-50 transition-all duration-150"
+                >
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <Tooltip content={item.tooltipData} position="right">
+                      <span className="text-sm font-medium text-gray-900 cursor-help">
+                        {item.name}
+                      </span>
+                    </Tooltip>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span
+                      className={clsx(
+                        'inline-flex px-2 py-1 text-xs rounded-full font-medium',
+                        categoryStyle.bgColor,
+                        categoryStyle.color
+                      )}
+                    >
+                      {categoryStyle.name}
                     </span>
-                  </Tooltip>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span
-                    className={clsx(
-                      'inline-flex px-2 py-1 text-xs rounded-full font-medium',
-                      categoryStyle.bgColor,
-                      categoryStyle.color
-                    )}
-                  >
-                    {categoryStyle.name}
-                  </span>
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-600">
-                  {formatValue(meanValue, item.unit)}
-                </td>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-600">
+                    {formatValue(meanValue, item.unit)}
+                  </td>
                 <td
                   className="px-4 py-3 whitespace-nowrap text-sm text-center cursor-pointer"
                   onClick={() => {
@@ -143,7 +203,8 @@ export default function MeasurementTable() {
                 </td>
               </tr>
             );
-          })}
+          })
+          )}
         </tbody>
       </table>
     </div>
