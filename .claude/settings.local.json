@@ -10,7 +10,9 @@
       "Bash(taskkill:*)",
       "Bash(cmd /c:*)",
       "Bash(npx kill-port:*)",
-      "Bash(copy .env.local .env)"
+      "Bash(copy .env.local .env)",
+      "Bash(rm -rf .next)",
+      "Bash(npm run dev)"
     ],
     "deny": [],
     "ask": []

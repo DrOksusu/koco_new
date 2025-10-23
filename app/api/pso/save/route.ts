@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     console.log('========================================');
-    console.log('📥 Received PSA API request');
+    console.log('📥 Received PSO API request');
     console.log('========================================');
     console.log('Request body:', {
       analysisId: analysisId || 'NEW',
@@ -53,16 +53,16 @@ export async function POST(request: NextRequest) {
     const userId = BigInt(1);
     const clinicId = BigInt(1);
 
-    // PSA landmarks에 접두사 추가
-    const psaLandmarks: Record<string, { x: number; y: number }> = {};
+    // PSO landmarks에 접두사 추가
+    const psoLandmarks: Record<string, { x: number; y: number }> = {};
     Object.entries(landmarks).forEach(([name, coords]) => {
       if (typeof coords === 'object' && coords !== null) {
-        psaLandmarks[`PSA_${name}`] = coords as { x: number; y: number };
+        psoLandmarks[`PSO_${name}`] = coords as { x: number; y: number };
       }
     });
 
-    // Calculate PSA-specific measurements
-    const psaAngles: Record<string, number> = {};
+    // Calculate PSO-specific measurements
+    const psoAngles: Record<string, number> = {};
 
     // Calculate distances and angles based on landmarks
     if (landmarks['Hinge Point'] && landmarks['Mn.1 Crown']) {
@@ -75,17 +75,17 @@ export async function POST(request: NextRequest) {
         Math.pow(mn1Crown.y - hingePoint.y, 2)
       );
 
-      psaAngles['PSA_Hinge_to_Mn1_Distance'] = distance;
+      psoAngles['PSO_Hinge_to_Mn1_Distance'] = distance;
     }
 
     // Add Guide Zone and Buffer Zone if provided
     if (geometry) {
       if (geometry.guideZone !== undefined) {
-        psaAngles['PSA_Guide_Zone_D1'] = geometry.guideZone;
+        psoAngles['PSO_Guide_Zone_D1'] = geometry.guideZone;
       }
 
       if (geometry.bufferZone !== undefined) {
-        psaAngles['PSA_Buffer_Zone_D2'] = geometry.bufferZone;
+        psoAngles['PSO_Buffer_Zone_D2'] = geometry.bufferZone;
       }
     }
 
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       // Calculate angle of FH line relative to horizontal
       const angle = Math.atan2(orbitale.y - porion.y, orbitale.x - porion.x) * (180 / Math.PI);
 
-      psaAngles['PSA_FH_Line_Angle'] = angle;
+      psoAngles['PSO_FH_Line_Angle'] = angle;
     }
 
     // URL에서 query parameters 제거 (pre-signed URL 파라미터 제거)
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     if (!existingAnalysis &&
         patientName && patientName.trim() !== '' &&
         patientBirthDate && patientBirthDate.trim() !== '') {
-      console.log('🔍 Searching for existing PSA analysis by patient info:', {
+      console.log('🔍 Searching for existing PSO analysis by patient info:', {
         patientName,
         patientBirthDate
       });
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (existingAnalysis) {
-        console.log('✅ Found existing PSA analysis for patient:', {
+        console.log('✅ Found existing PSO analysis for patient:', {
           analysisId: existingAnalysis.id.toString(),
           analysisCode: existingAnalysis.analysisCode,
           createdAt: existingAnalysis.createdAt
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     // 3단계: UPDATE or CREATE
     if (existingAnalysis) {
       // UPDATE 모드 - 기존 분석 업데이트
-      console.log('🔄 Updating existing PSA analysis:', existingAnalysis.id.toString());
+      console.log('🔄 Updating existing PSO analysis:', existingAnalysis.id.toString());
 
       // 기존 데이터 가져오기
       const existingLandmarks = (existingAnalysis.landmarksData as Record<string, any>) || {};
@@ -160,20 +160,20 @@ export async function POST(request: NextRequest) {
       // 새 데이터와 병합 (기존 데이터 유지하면서 새 데이터 추가)
       const mergedLandmarks = {
         ...existingLandmarks,
-        ...psaLandmarks  // PSA 랜드마크 추가/업데이트
+        ...psoLandmarks  // PSO 랜드마크 추가/업데이트
       };
 
       const mergedAngles = {
         ...existingAngles,
-        ...psaAngles  // PSA 측정값 추가/업데이트
+        ...psoAngles  // PSO 측정값 추가/업데이트
       };
 
       console.log('📊 Data merge:', {
         existingLandmarkCount: Object.keys(existingLandmarks).length,
-        newPsaLandmarkCount: Object.keys(psaLandmarks).length,
+        newPsoLandmarkCount: Object.keys(psoLandmarks).length,
         mergedLandmarkCount: Object.keys(mergedLandmarks).length,
         existingAngleCount: Object.keys(existingAngles).length,
-        newPsaAngleCount: Object.keys(psaAngles).length,
+        newPsoAngleCount: Object.keys(psoAngles).length,
         mergedAngleCount: Object.keys(mergedAngles).length,
       });
 
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
         data: {
           patientName: patientName || 'Unknown Patient',
           patientBirthDate: (patientBirthDate && patientBirthDate.trim() !== '') ? new Date(patientBirthDate) : null,
-          psaImageUrl: cleanUrl(annotatedImageUrl), // PSA 전용 이미지
+          psoImageUrl: cleanUrl(annotatedImageUrl), // PSO 전용 이미지
           fileName,
           analyzedAt: new Date(),
           landmarksData: mergedLandmarks, // 병합된 데이터 저장
@@ -196,26 +196,26 @@ export async function POST(request: NextRequest) {
           analysisId: analysis.id,
           userId,
           actionType: 'modified',
-          description: 'PSA analysis updated',
-          type: 'PSA',
-          title: `PSA Analysis - ${patientName || 'Unknown Patient'}`,
+          description: 'PSO analysis updated',
+          type: 'PSO',
+          title: `PSO Analysis - ${patientName || 'Unknown Patient'}`,
           status: 'COMPLETED',
           result: {
             analysisCode: analysis.analysisCode,
             landmarkCount: Object.keys(landmarks).length,
-            measurementCount: Object.keys(psaAngles).length,
+            measurementCount: Object.keys(psoAngles).length,
             timestamp: timestamp || new Date().toISOString(),
           },
         },
       });
 
-      console.log('✅ PSA analysis updated successfully');
+      console.log('✅ PSO analysis updated successfully');
     } else {
       // CREATE 모드 - 새 분석 생성
-      console.log('➕ Creating new PSA analysis for patient:', patientName);
+      console.log('➕ Creating new PSO analysis for patient:', patientName);
 
-      // Generate unique analysis code for PSA
-      const analysisCode = `PSA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // Generate unique analysis code for PSO
+      const analysisCode = `PSO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
       // Create main analysis record in xray_analyses table with JSON data
       analysis = await prisma.xrayAnalysis.create({
@@ -227,13 +227,13 @@ export async function POST(request: NextRequest) {
           patientBirthDate: (patientBirthDate && patientBirthDate.trim() !== '') ? new Date(patientBirthDate) : null,
           xrayType: 'lateral',
           originalImageUrl: cleanUrl(originalImageUrl),
-          psaImageUrl: cleanUrl(annotatedImageUrl), // PSA 전용 이미지
+          psoImageUrl: cleanUrl(annotatedImageUrl), // PSO 전용 이미지
           fileName,
           analysisStatus: 'completed',
-          diagnosisNotes: 'PSA Analysis - Postural Structure Analysis',
+          diagnosisNotes: 'PSO Analysis - Postural Sagittal Occlusal',
           analyzedAt: new Date(),
-          landmarksData: psaLandmarks, // JSON 형태로 저장
-          anglesData: psaAngles, // JSON 형태로 저장
+          landmarksData: psoLandmarks, // JSON 형태로 저장
+          anglesData: psoAngles, // JSON 형태로 저장
         },
       });
 
@@ -243,27 +243,27 @@ export async function POST(request: NextRequest) {
           analysisId: analysis.id,
           userId,
           actionType: 'created',
-          description: 'PSA Analysis created and completed',
-          type: 'PSA',
-          title: `PSA Analysis - ${patientName || 'Unknown Patient'}`,
+          description: 'PSO Analysis created and completed',
+          type: 'PSO',
+          title: `PSO Analysis - ${patientName || 'Unknown Patient'}`,
           status: 'COMPLETED',
           result: {
             analysisCode: analysis.analysisCode,
             landmarkCount: Object.keys(landmarks).length,
-            measurementCount: Object.keys(psaAngles).length,
+            measurementCount: Object.keys(psoAngles).length,
             timestamp: timestamp || new Date().toISOString(),
           },
         },
       });
 
-      console.log('✅ PSA analysis created successfully');
+      console.log('✅ PSO analysis created successfully');
     }
 
-    console.log('PSA analysis saved successfully:', {
+    console.log('PSO analysis saved successfully:', {
       analysisId: analysis.id.toString(),
       analysisCode: analysis.analysisCode,
-      landmarksCount: Object.keys(psaLandmarks).length,
-      measurementsCount: Object.keys(psaAngles).length,
+      landmarksCount: Object.keys(psoLandmarks).length,
+      measurementsCount: Object.keys(psoAngles).length,
     });
 
     return NextResponse.json({
@@ -273,7 +273,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error saving PSA analysis:', error);
+    console.error('Error saving PSO analysis:', error);
     console.error('Error details:', {
       name: error instanceof Error ? error.name : 'Unknown',
       message: error instanceof Error ? error.message : 'Unknown error',
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(
       {
-        error: 'Failed to save PSA analysis',
+        error: 'Failed to save PSO analysis',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

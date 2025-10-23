@@ -100,7 +100,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 2단계: sessionStorage에 없으면 환자 이름+생년월일로 조회
-    if (!existingAnalysis && patientName && patientBirthDate) {
+    if (!existingAnalysis &&
+        patientName && patientName.trim() !== '' &&
+        patientBirthDate && patientBirthDate.trim() !== '') {
       console.log('🔍 Searching for existing analysis by patient info:', {
         patientName,
         patientBirthDate
@@ -129,16 +131,40 @@ export async function POST(request: NextRequest) {
       // UPDATE 모드 - 기존 분석 업데이트
       console.log('🔄 Updating existing analysis:', existingAnalysis.id.toString());
 
+      // 기존 데이터 가져오기
+      const existingLandmarks = (existingAnalysis.landmarksData as Record<string, any>) || {};
+      const existingAngles = (existingAnalysis.anglesData as Record<string, any>) || {};
+
+      // 새 데이터와 병합 (기존 데이터 유지하면서 새 데이터 추가)
+      const mergedLandmarks = {
+        ...existingLandmarks,
+        ...landmarks  // Landmark 데이터 추가/업데이트
+      };
+
+      const mergedAngles = {
+        ...existingAngles,
+        ...(angles || {})  // Landmark 측정값 추가/업데이트
+      };
+
+      console.log('📊 Data merge:', {
+        existingLandmarkCount: Object.keys(existingLandmarks).length,
+        newLandmarkCount: Object.keys(landmarks).length,
+        mergedLandmarkCount: Object.keys(mergedLandmarks).length,
+        existingAngleCount: Object.keys(existingAngles).length,
+        newAngleCount: Object.keys(angles || {}).length,
+        mergedAngleCount: Object.keys(mergedAngles).length,
+      });
+
       analysis = await prisma.xrayAnalysis.update({
         where: { id: existingAnalysis.id },
         data: {
           patientName: patientName || 'Unknown Patient',
-          patientBirthDate: patientBirthDate ? new Date(patientBirthDate) : null,
-          annotatedImageUrl: cleanUrl(annotatedImageUrl || imageUrl), // 랜드마크 이미지만 업데이트
+          patientBirthDate: (patientBirthDate && patientBirthDate.trim() !== '') ? new Date(patientBirthDate) : null,
+          landmarkImageUrl: cleanUrl(annotatedImageUrl || imageUrl), // Landmark 전용 이미지
           fileName,
           analyzedAt: new Date(),
-          landmarksData: landmarks, // JSON 형태로 저장
-          anglesData: angles || {}, // JSON 형태로 저장
+          landmarksData: mergedLandmarks, // 병합된 데이터 저장
+          anglesData: mergedAngles, // 병합된 데이터 저장
         },
       });
 
@@ -147,7 +173,7 @@ export async function POST(request: NextRequest) {
         data: {
           analysisId: analysis.id,
           userId,
-          actionType: 'updated',
+          actionType: 'modified',
           description: 'Landmark analysis updated',
         },
       });
@@ -165,10 +191,10 @@ export async function POST(request: NextRequest) {
           userId,
           clinicId,
           patientName: patientName || 'Unknown Patient',
-          patientBirthDate: patientBirthDate ? new Date(patientBirthDate) : null,
+          patientBirthDate: (patientBirthDate && patientBirthDate.trim() !== '') ? new Date(patientBirthDate) : null,
           xrayType: 'lateral',
           originalImageUrl: cleanUrl(originalImageUrl || imageUrl), // 원본 이미지 URL (query params 제거)
-          annotatedImageUrl: cleanUrl(annotatedImageUrl || imageUrl), // 랜드마크가 그려진 이미지 URL (query params 제거)
+          landmarkImageUrl: cleanUrl(annotatedImageUrl || imageUrl), // Landmark 전용 이미지
           fileName,
           analysisStatus: 'completed',
           analyzedAt: new Date(),
