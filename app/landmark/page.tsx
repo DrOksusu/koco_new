@@ -10,6 +10,7 @@ import { generateExcelFile } from '@/lib/excel-generator';
 import { useLandmarkData } from '@/lib/hooks/useLandmarkData';
 import { addCalculatedLandmarks } from '@/lib/calculations/intersectionCalculations';
 import { calculateAllAngles } from '@/lib/calculations/angleCalculations';
+import { calculateAllDistances } from '@/lib/calculations/distanceCalculations';
 
 export default function LandmarkPage() {
   const router = useRouter();
@@ -280,6 +281,14 @@ export default function LandmarkPage() {
       const angles = calculateAllAngles(extendedLandmarks);
       console.log('Calculated angles count:', Object.keys(angles).length);
 
+      // 거리 계측값 계산 (ACBL, MBL, AFH, PFH, E-line 등)
+      const distances = calculateAllDistances(extendedLandmarks);
+      console.log('Calculated distances count:', Object.keys(distances).length);
+
+      // 각도와 거리 계측값 병합
+      const allMeasurements = { ...angles, ...distances };
+      console.log('Total measurements count:', Object.keys(allMeasurements).length);
+
       // 계측값 대시보드로 데이터 전송 (확장된 랜드마크 사용)
       const measurementResult = await sendMeasurementData(extendedLandmarks);
 
@@ -365,6 +374,8 @@ export default function LandmarkPage() {
         fileName,
         landmarkCount: Object.keys(landmarks).length,
         angleCount: Object.keys(angles).length,
+        distanceCount: Object.keys(distances).length,
+        totalMeasurementCount: Object.keys(allMeasurements).length,
         originalImageUrl: s3OriginalUrl,
         annotatedImageUrl: s3AnnotatedUrl,
       });
@@ -379,7 +390,7 @@ export default function LandmarkPage() {
           analysisId: existingAnalysisId || undefined, // 기존 분석 ID (업데이트용)
           fileName,
           landmarks: extendedLandmarks, // 확장된 랜드마크 저장
-          angles,
+          angles: allMeasurements, // 각도 + 거리 계측값 모두 포함
           originalImageUrl: s3OriginalUrl,
           annotatedImageUrl: s3AnnotatedUrl,
           patientName: sessionStorage.getItem('patientName') || 'Unknown Patient',
@@ -399,8 +410,8 @@ export default function LandmarkPage() {
             type: 'LANDMARK_ANALYSIS_COMPLETE',
             data: {
               landmarks: extendedLandmarks, // 확장된 랜드마크 전송
-              angles,
-              measurements: measurementResult?.measurements,
+              angles: allMeasurements, // 각도 + 거리 계측값 모두 포함
+              measurements: measurementResult?.measurements || allMeasurements, // 계측값
               diagnosis: measurementResult?.diagnosis,
               fileName,
               timestamp: new Date().toISOString(),

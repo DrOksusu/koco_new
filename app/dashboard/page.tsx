@@ -111,6 +111,7 @@ export default function DashboardPage() {
   const [uploadedPsaResult, setUploadedPsaResult] = useState<string | null>(null);
   const [uploadedPsoResult, setUploadedPsoResult] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [outputFormat, setOutputFormat] = useState<'pptx' | 'pdf'>('pptx');
 
   // 환자 정보 자동 저장 (debounced) - 분석 레코드가 있을 때만
   useEffect(() => {
@@ -1067,17 +1068,26 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* 안내 메시지 */}
-                <div className="mt-2 p-2 bg-blue-50 rounded">
-                  <h3 className="text-xs font-medium text-blue-800 mb-1">
-                    지원 파일 형식
-                  </h3>
-                  <ul className="text-xs text-blue-600 space-y-1">
-                  <li>• PDF, Word, Excel</li>
-                  <li>• CSV, TXT</li>
-                  <li>• 이미지 (PNG, JPG, JPEG)</li>
-                  <li>• 최대 파일 크기: 50MB</li>
-                  </ul>
+                {/* 안내 메시지 - Hover로 표시 */}
+                <div className="mt-2 relative group">
+                  <div className="flex items-center text-xs text-gray-600 cursor-help">
+                    <svg className="w-4 h-4 mr-1 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-blue-600 font-medium">지원 파일 형식</span>
+                  </div>
+                  {/* Tooltip */}
+                  <div className="invisible group-hover:visible absolute left-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
+                    <div className="font-semibold mb-2">지원 파일 형식</div>
+                    <ul className="space-y-1">
+                      <li>• PDF, Word, Excel</li>
+                      <li>• CSV, TXT</li>
+                      <li>• 이미지 (PNG, JPG, JPEG)</li>
+                      <li>• 최대 파일 크기: 50MB</li>
+                    </ul>
+                    {/* 화살표 */}
+                    <div className="absolute -top-2 left-4 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-gray-900"></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1452,6 +1462,34 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* 반환 파일 형식 선택 및 파일 생성 */}
+          <div className="mt-3 pt-3 border-t border-gray-200">
+            <h3 className="text-xs font-semibold text-gray-800 mb-2">반환 파일 형식</h3>
+            <div className="flex items-center gap-2">
+              <select
+                value={outputFormat}
+                onChange={(e) => setOutputFormat(e.target.value as 'pptx' | 'pdf')}
+                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="pptx">PowerPoint (.pptx)</option>
+                <option value="pdf">PDF (.pdf)</option>
+              </select>
+              <button
+                onClick={() => {
+                  if (!originalResultImage && !uploadedLandmarkResult && !uploadedPsaResult && !uploadedPsoResult) {
+                    alert('생성할 분석 결과가 없습니다. 먼저 분석을 진행해주세요.');
+                    return;
+                  }
+
+                  alert(`${outputFormat.toUpperCase()} 파일 생성 기능은 준비 중입니다.\n\n포함될 내용:\n- 환자 정보\n- Lateral Ceph 원본 이미지\n- Landmark 분석 결과\n- PSA 분석 결과\n- PSO 분석 결과\n- 계측값 데이터`);
+                }}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md"
+              >
+                파일생성하기
+              </button>
             </div>
           </div>
         </div>
