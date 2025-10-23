@@ -25,12 +25,18 @@ export default function MeasurementDashboard({ initialData }: MeasurementDashboa
   useEffect(() => {
     if (initialData) {
       console.log('Loading initial data from history:', initialData);
-      if (initialData.angles) {
-        updateMeasurements(initialData.angles);
+
+      // measurements 우선, 없으면 angles 사용 (하위 호환성)
+      const measurementsData = initialData.measurements || initialData.angles;
+
+      if (measurementsData) {
+        updateMeasurements(measurementsData);
         toast.success('분석 이력 데이터를 불러왔습니다!');
       }
+
       if (initialData.diagnosis) {
         updateDiagnosis(initialData.diagnosis);
+        console.log('Diagnosis loaded:', Object.keys(initialData.diagnosis).length, 'indicators');
       }
     }
   }, [initialData, updateMeasurements, updateDiagnosis]);
@@ -119,7 +125,8 @@ export default function MeasurementDashboard({ initialData }: MeasurementDashboa
                 ? '진단 지표가 계산되었습니다'
                 : '계측값 분석 후 진단 지표가 표시됩니다'}
             </div>
-            <DiagnosisTable diagnosis={diagnosis} />
+            {console.log('🔍 About to render DiagnosisTable')}
+            <DiagnosisTable />
           </div>
         </div>
       </div>

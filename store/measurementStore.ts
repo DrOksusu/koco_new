@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { MeasurementDefinition } from '@/types/measurementDefinition.types';
+import { DiagnosisDefinition } from '@/types/diagnosisDefinition.types';
 
 interface MeasurementStore {
   measurements: Record<string, number>;
@@ -14,6 +15,12 @@ interface MeasurementStore {
   definitionsError: string | null;
   definitionsLastFetched: number | null;
 
+  // Diagnosis definitions from DB
+  diagnosisDefinitions: DiagnosisDefinition[];
+  diagnosisDefinitionsLoading: boolean;
+  diagnosisDefinitionsError: string | null;
+  diagnosisDefinitionsLastFetched: number | null;
+
   updateMeasurements: (data: Record<string, number>) => void;
   updateDiagnosis: (data: Record<string, number>) => void;
   updateSingleMeasurement: (name: string, value: number) => void;
@@ -24,6 +31,10 @@ interface MeasurementStore {
   // Fetch definitions from DB
   fetchDefinitions: () => Promise<void>;
   clearDefinitionsCache: () => void;
+
+  // Fetch diagnosis definitions from DB
+  fetchDiagnosisDefinitions: () => Promise<void>;
+  clearDiagnosisDefinitionsCache: () => void;
 }
 
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -41,6 +52,12 @@ export const useMeasurementStore = create<MeasurementStore>()(
       definitionsLoading: false,
       definitionsError: null,
       definitionsLastFetched: null,
+
+      // Diagnosis definitions state
+      diagnosisDefinitions: [],
+      diagnosisDefinitionsLoading: false,
+      diagnosisDefinitionsError: null,
+      diagnosisDefinitionsLastFetched: null,
 
       updateMeasurements: (data) =>
         set((state) => ({
@@ -119,6 +136,53 @@ export const useMeasurementStore = create<MeasurementStore>()(
           definitions: [],
           definitionsLastFetched: null,
           definitionsError: null
+        }),
+
+      fetchDiagnosisDefinitions: async () => {
+        const state = get();
+        const now = Date.now();
+
+        // Check if cache is still valid
+        if (
+          state.diagnosisDefinitions.length > 0 &&
+          state.diagnosisDefinitionsLastFetched &&
+          now - state.diagnosisDefinitionsLastFetched < CACHE_DURATION
+        ) {
+          console.log('Using cached diagnosis definitions');
+          return;
+        }
+
+        set({ diagnosisDefinitionsLoading: true, diagnosisDefinitionsError: null });
+
+        try {
+          const response = await fetch('/api/diagnosis/definitions');
+          const data = await response.json();
+
+          if (data.success) {
+            set({
+              diagnosisDefinitions: data.definitions,
+              diagnosisDefinitionsLoading: false,
+              diagnosisDefinitionsLastFetched: now,
+              diagnosisDefinitionsError: null
+            });
+            console.log(`Fetched ${data.count} diagnosis definitions from database`);
+          } else {
+            throw new Error(data.error || 'Failed to fetch diagnosis definitions');
+          }
+        } catch (error) {
+          console.error('Error fetching diagnosis definitions:', error);
+          set({
+            diagnosisDefinitionsLoading: false,
+            diagnosisDefinitionsError: error instanceof Error ? error.message : 'Unknown error'
+          });
+        }
+      },
+
+      clearDiagnosisDefinitionsCache: () =>
+        set({
+          diagnosisDefinitions: [],
+          diagnosisDefinitionsLastFetched: null,
+          diagnosisDefinitionsError: null
         })
     })
   )
