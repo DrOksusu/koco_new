@@ -8,6 +8,7 @@ import MeasurementDashboard from '@/components/MeasurementDashboard';
 import Link from 'next/link';
 import { useMeasurementStore } from '@/store/measurementStore';
 import { imageCache } from '@/lib/imageCache';
+import { generatePowerPoint, canGeneratePowerPoint } from '@/lib/services/powerpointService';
 
 // 최적화된 S3 이미지 컴포넌트 (imageCache 사용)
 const S3Image = memo(function S3Image({
@@ -112,6 +113,8 @@ export default function DashboardPage() {
   const [uploadedPsoResult, setUploadedPsoResult] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [outputFormat, setOutputFormat] = useState<'pptx' | 'pdf'>('pptx');
+  const [isGeneratingFile, setIsGeneratingFile] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<string>('');
 
   // 환자 정보 자동 저장 (debounced) - 분석 레코드가 있을 때만
   useEffect(() => {
@@ -164,6 +167,11 @@ export default function DashboardPage() {
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === 'LANDMARK_ANALYSIS_COMPLETE') {
         console.log('Received landmark analysis data:', event.data.data);
+        console.log('=== Analysis Data Structure ===');
+        console.log('Has angles:', !!event.data.data.angles);
+        console.log('Has diagnosis:', !!event.data.data.diagnosis);
+        console.log('Has measurements:', !!event.data.data.measurements);
+        console.log('Keys:', Object.keys(event.data.data));
         setAnalysisData(event.data.data);
 
         // 랜드마크가 표시된 이미지 저장
@@ -1478,17 +1486,84 @@ export default function DashboardPage() {
                 <option value="pdf">PDF (.pdf)</option>
               </select>
               <button
-                onClick={() => {
-                  if (!originalResultImage && !uploadedLandmarkResult && !uploadedPsaResult && !uploadedPsoResult) {
-                    alert('생성할 분석 결과가 없습니다. 먼저 분석을 진행해주세요.');
+                onClick={async () => {
+                  // 유효성 검사
+                  const checkResult = canGeneratePowerPoint({
+                    patientName,
+                    patientBirthDate,
+                    lateralCephUrl: originalResultImage,
+                    psaResultUrl: uploadedPsaResult,
+                    psoResultUrl: uploadedPsoResult,
+                    measurements: analysisData?.angles || {}
+                  });
+
+                  if (!checkResult.canGenerate) {
+                    alert(checkResult.reason || '파일 생성 조건을 만족하지 않습니다.');
                     return;
                   }
 
-                  alert(`${outputFormat.toUpperCase()} 파일 생성 기능은 준비 중입니다.\n\n포함될 내용:\n- 환자 정보\n- Lateral Ceph 원본 이미지\n- Landmark 분석 결과\n- PSA 분석 결과\n- PSO 분석 결과\n- 계측값 데이터`);
+                  // 경고사항이 있으면 사용자에게 확인
+                  if (checkResult.warnings && checkResult.warnings.length > 0) {
+                    const warningMessage = '⚠️ 다음 항목이 누락되었습니다:\n\n' +
+                      checkResult.warnings.map(w => `• ${w}`).join('\n') +
+                      '\n\n그래도 계속 진행하시겠습니까?';
+
+                    if (!confirm(warningMessage)) {
+                      return;
+                    }
+                  }
+
+                  setIsGeneratingFile(true);
+                  setGenerationProgress('시작 중...');
+
+                  try {
+                    const result = await generatePowerPoint(
+                      {
+                        lateralCephUrl: originalResultImage,
+                        psaResultUrl: uploadedPsaResult,
+                        psoResultUrl: uploadedPsoResult,
+                        landmarkResultUrl: uploadedLandmarkResult,
+                        patientName,
+                        patientBirthDate,
+                        measurements: analysisData?.angles || {},
+                        diagnosis: analysisData?.diagnosis,
+                        analysisCode: analysisData?.analysisCode,
+                        fileType: outputFormat
+                      },
+                      (message) => setGenerationProgress(message)
+                    );
+
+                    if (result.success) {
+                      alert(`✅ ${outputFormat.toUpperCase()} 파일이 생성되었습니다!\n\n파일명: ${result.filename}`);
+                    } else {
+                      alert(`❌ 파일 생성 실패\n\n${result.error}`);
+                    }
+                  } catch (error) {
+                    console.error('File generation error:', error);
+                    alert('파일 생성 중 오류가 발생했습니다.');
+                  } finally {
+                    setIsGeneratingFile(false);
+                    setGenerationProgress('');
+                  }
                 }}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md"
+                disabled={isGeneratingFile}
+                className={`px-4 py-2 ${
+                  isGeneratingFile
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-green-600 hover:bg-green-700'
+                } text-white text-sm font-medium rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md flex items-center gap-2`}
               >
-                파일생성하기
+                {isGeneratingFile ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>{generationProgress || '생성 중...'}</span>
+                  </>
+                ) : (
+                  '파일생성하기'
+                )}
               </button>
             </div>
           </div>

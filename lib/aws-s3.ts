@@ -47,8 +47,8 @@ export async function generatePresignedUploadUrl(
     ContentType: contentType,
   });
 
-  // URL은 1시간 동안 유효
-  const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+  // URL은 8시간 동안 유효
+  const url = await getSignedUrl(s3Client, command, { expiresIn: 28800 });
   return url;
 }
 
@@ -59,8 +59,8 @@ export async function generatePresignedDownloadUrl(key: string) {
     Key: key,
   });
 
-  // URL은 1시간 동안 유효
-  const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+  // URL은 8시간 동안 유효
+  const url = await getSignedUrl(s3Client, command, { expiresIn: 28800 });
   return url;
 }
 

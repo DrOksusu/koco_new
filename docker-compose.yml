@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  koco-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: oksusu2020/koco_new:latest
+    container_name: koco_new
+    ports:
+      - "3002:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    restart: unless-stopped
+    volumes:
+      - koco_new_volume:/app/uploads
+    networks:
+      - koco-network
+
+volumes:
+  koco_new_volume:
+
+networks:
+  koco-network:
+    driver: bridge

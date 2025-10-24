@@ -36,7 +36,8 @@ export async function getPresignedUrl(key: string): Promise<string> {
     Key: key,
   });
 
-  const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+  // 만료 시간: 8시간 (28800초)
+  const url = await getSignedUrl(s3Client, command, { expiresIn: 28800 });
   return url;
 }
 
@@ -45,7 +46,11 @@ export async function getPresignedUrlFromFullUrl(fullUrl: string): Promise<strin
 
   // S3 URL에서 key 추출
   // 예: https://koco-dental-files.s3.ap-northeast-2.amazonaws.com/landmarks/ok4192ok@gmail.com/2025-09-26/1758921910310_lateral_ceph.jpg
-  const urlParts = fullUrl.split('.amazonaws.com/');
+
+  // 쿼리 파라미터 제거 (이미 signed URL인 경우 대비)
+  const urlWithoutQuery = fullUrl.split('?')[0];
+
+  const urlParts = urlWithoutQuery.split('.amazonaws.com/');
   if (urlParts.length !== 2) {
     console.error('[getPresignedUrlFromFullUrl] Failed to split URL:', urlParts);
     throw new Error('Invalid S3 URL');

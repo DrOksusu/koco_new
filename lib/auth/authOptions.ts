@@ -16,6 +16,7 @@ export const authOptions: AuthOptions = {
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET!,
+  basePath: '/new/api/auth',
   session: {
     strategy: 'jwt' as const,
   },

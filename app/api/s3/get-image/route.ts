@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     });
 
     const presignedUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: 3600, // 1시간 유효
+      expiresIn: 28800, // 8시간 유효
     });
 
     console.log('Generated pre-signed URL successfully');
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
     });
 
     const presignedUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: 3600,
+      expiresIn: 28800, // 8시간 유효
     });
 
     return NextResponse.json({
