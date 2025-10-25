@@ -1123,7 +1123,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <img
-                    src="/images/placeholders/sample_lateral.jpg"
+                    src="/new/images/placeholders/sample_lateral.jpg"
                     alt="Sample Lateral Ceph"
                     className="w-full h-full object-contain opacity-40"
                   />
@@ -1151,7 +1151,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <img
-                    src="/images/placeholders/sample_lateral.jpg"
+                    src="/new/images/placeholders/sample_lateral.jpg"
                     alt="Sample Landmark"
                     className="w-full h-full object-contain opacity-40"
                   />
@@ -1344,7 +1344,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <img
-                    src="/images/placeholders/sample_psa.jpg"
+                    src="/new/images/placeholders/sample_psa.jpg"
                     alt="Sample PSA"
                     className="w-full h-full object-contain opacity-40"
                   />
@@ -1457,7 +1457,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <img
-                    src="/images/placeholders/sample_psa.jpg"
+                    src="/new/images/placeholders/sample_psa.jpg"
                     alt="Sample PSO"
                     className="w-full h-full object-contain opacity-40"
                   />

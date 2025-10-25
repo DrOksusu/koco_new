@@ -138,7 +138,7 @@ export default function FileUpload({
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: 'url(/images/placeholders/sample_lateral.jpg)',
+              backgroundImage: 'url(/new/images/placeholders/sample_lateral.jpg)',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
