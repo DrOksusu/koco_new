@@ -9,7 +9,7 @@ interface ProvidersProps {
 
 export function Providers({ children }: ProvidersProps) {
   return (
-    <SessionProvider>
+    <SessionProvider basePath="/new/api/auth">
       {children}
     </SessionProvider>
   );
