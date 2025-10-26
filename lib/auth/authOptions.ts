@@ -104,5 +104,26 @@ export const authOptions: AuthOptions = {
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      // Handle basePath for production
+      const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+
+      // If url is relative (starts with /), add basePath
+      if (url.startsWith('/')) {
+        // If it already has /new prefix, don't add it again
+        if (url.startsWith('/new')) {
+          return `${baseUrl}${url}`;
+        }
+        return `${baseUrl}${basePath}${url}`;
+      }
+
+      // If url is absolute and same origin
+      if (url.startsWith(baseUrl)) {
+        return url;
+      }
+
+      // Default: redirect to dashboard with basePath
+      return `${baseUrl}${basePath}/dashboard`;
+    },
   },
 };
