@@ -1140,7 +1140,7 @@ export default function DashboardPage() {
               <h3 className="text-xs font-medium text-gray-700 mb-1">
                 Landmark
                 <span className="ml-2 text-xs text-blue-600">
-                  {uploadedLandmarkResult ? '(더블클릭하여 수정)' : '(분석 필요)'}
+                  {uploadedLandmarkResult ? '(더블클릭하여 수정)' : '(비었음)'}
                 </span>
               </h3>
               <div
@@ -1255,7 +1255,7 @@ export default function DashboardPage() {
               <h3 className="text-xs font-medium text-gray-700 mb-1">
                 PSA
                 <span className="ml-2 text-xs text-blue-600">
-                  {uploadedPsaResult ? '(더블클릭하여 수정)' : '(분석 필요)'}
+                  {uploadedPsaResult ? '(더블클릭하여 수정)' : '(비었음)'}
                 </span>
               </h3>
               <div
@@ -1368,7 +1368,7 @@ export default function DashboardPage() {
               <h3 className="text-xs font-medium text-gray-700 mb-1">
                 PSO
                 <span className="ml-2 text-xs text-blue-600">
-                  {uploadedPsoResult ? '(더블클릭하여 수정)' : '(분석 필요)'}
+                  {uploadedPsoResult ? '(더블클릭하여 수정)' : '(비었음)'}
                 </span>
               </h3>
               <div
