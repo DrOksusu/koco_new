@@ -95,6 +95,10 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { clearAll } = useMeasurementStore();
+
+  // basePath for images (production: /new, development: '')
+  const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [diagnosisType, setDiagnosisType] = useState<'LANDMARK' | 'PSA' | 'PSO'>('LANDMARK');
@@ -1123,7 +1127,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <img
-                    src="/new/images/placeholders/sample_lateral.jpg"
+                    src={`${basePath}/images/placeholders/sample_lateral.jpg`}
                     alt="Sample Lateral Ceph"
                     className="w-full h-full object-contain opacity-40"
                   />
@@ -1151,7 +1155,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <img
-                    src="/new/images/placeholders/sample_lateral.jpg"
+                    src={`${basePath}/images/placeholders/sample_lateral.jpg`}
                     alt="Sample Landmark"
                     className="w-full h-full object-contain opacity-40"
                   />
@@ -1344,7 +1348,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <img
-                    src="/new/images/placeholders/sample_psa.jpg"
+                    src={`${basePath}/images/placeholders/sample_psa.jpg`}
                     alt="Sample PSA"
                     className="w-full h-full object-contain opacity-40"
                   />
@@ -1457,7 +1461,7 @@ export default function DashboardPage() {
                   />
                 ) : (
                   <img
-                    src="/new/images/placeholders/sample_psa.jpg"
+                    src={`${basePath}/images/placeholders/sample_psa.jpg`}
                     alt="Sample PSO"
                     className="w-full h-full object-contain opacity-40"
                   />
