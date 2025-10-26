@@ -115,11 +115,33 @@ jobs:
       - name: Verify Deployment
         run: |
           ssh -o StrictHostKeyChecking=no -i aws_key.pem ${{ secrets.AWS_USERNAME }}@${{ secrets.AWS_HOST }} << 'EOF'
-            # 컨테이너 실행 확인
-            docker ps | grep koco_new
+            echo "=== Deployment Verification ==="
 
-            # 컨테이너 로그 확인
-            docker logs --tail 50 koco_new
+            # 컨테이너 존재 확인 (실행 중이든 아니든)
+            if docker ps -a | grep -q koco_new; then
+              echo "✓ Container 'koco_new' exists"
+
+              # 컨테이너 상태 확인
+              if docker ps | grep -q koco_new; then
+                echo "✓ Container 'koco_new' is running"
+                docker ps | grep koco_new
+              else
+                echo "✗ Container 'koco_new' exists but NOT running"
+                docker ps -a | grep koco_new
+              fi
+
+              # 로그 확인 (항상 출력)
+              echo ""
+              echo "=== Container Logs (last 50 lines) ==="
+              docker logs --tail 50 koco_new 2>&1 || echo "Could not fetch logs"
+            else
+              echo "✗ Container 'koco_new' does not exist!"
+              echo "This is the first deployment or container was manually deleted."
+              exit 1
+            fi
+
+            echo ""
+            echo "=== Deployment verification complete ==="
           EOF
 
       # 7. AWS 키 파일 삭제
