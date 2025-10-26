@@ -64,15 +64,25 @@ jobs:
       - name: Deploy to AWS Server
         run: |
           ssh -o StrictHostKeyChecking=no -i aws_key.pem ${{ secrets.AWS_USERNAME }}@${{ secrets.AWS_HOST }} << 'EOF'
-            echo "AWS login successful"
+            set -e  # Exit on any error
+            echo "=== Starting Deployment ==="
 
             # Docker Hub 로그인
-            docker login -u "${{ secrets.DOCKER_USERNAME }}" -p "${{ secrets.DOCKER_PASSWORD }}"
+            echo "Step 1: Docker Hub login..."
+            if docker login -u "${{ secrets.DOCKER_USERNAME }}" -p "${{ secrets.DOCKER_PASSWORD }}"; then
+              echo "✓ Docker login successful"
+            else
+              echo "✗ Docker login failed"
+              exit 1
+            fi
 
             # 배포 디렉토리로 이동
+            echo "Step 2: Creating deployment directory..."
             mkdir -p /opt/koco-new && cd /opt/koco-new
+            echo "✓ Directory ready: $(pwd)"
 
             # .env 파일 생성
+            echo "Step 3: Creating .env file..."
             cat > .env <<ENVEOF
             NODE_ENV=production
             DATABASE_URL=${{ secrets.DATABASE_URL }}
@@ -85,16 +95,33 @@ jobs:
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
           ENVEOF
+            echo "✓ .env file created"
 
             # 최신 이미지 pull
-            docker pull ${{ secrets.DOCKER_USERNAME }}/koco_new:$(date +%Y%m%d)
+            IMAGE_TAG="${{ secrets.DOCKER_USERNAME }}/koco_new:$(date +%Y%m%d)"
+            echo "Step 4: Pulling Docker image: $IMAGE_TAG"
+            if docker pull "$IMAGE_TAG"; then
+              echo "✓ Image pulled successfully"
+            else
+              echo "✗ Failed to pull image: $IMAGE_TAG"
+              echo "Trying to pull latest tag..."
+              IMAGE_TAG="${{ secrets.DOCKER_USERNAME }}/koco_new:latest"
+              if docker pull "$IMAGE_TAG"; then
+                echo "✓ Latest image pulled successfully"
+              else
+                echo "✗ Failed to pull latest image"
+                exit 1
+              fi
+            fi
 
             # 기존 컨테이너 중지 및 삭제
-            docker stop koco_new || true
-            docker rm koco_new || true
+            echo "Step 5: Removing old container..."
+            docker stop koco_new 2>/dev/null && echo "✓ Old container stopped" || echo "→ No running container to stop"
+            docker rm koco_new 2>/dev/null && echo "✓ Old container removed" || echo "→ No container to remove"
 
             # 새 컨테이너 실행
-            docker run -d -p 3002:3000 \
+            echo "Step 6: Starting new container..."
+            if docker run -d -p 3002:3000 \
               --name koco_new \
               --restart=always \
               --ulimit nofile=65535:65535 \
@@ -103,12 +130,34 @@ jobs:
               --security-opt apparmor=unconfined \
               --env-file .env \
               -v koco_new_volume:/app/uploads \
-              ${{ secrets.DOCKER_USERNAME }}/koco_new:$(date +%Y%m%d)
+              "$IMAGE_TAG"; then
+              echo "✓ Container started successfully"
+              CONTAINER_ID=$(docker ps -q -f name=koco_new)
+              echo "✓ Container ID: $CONTAINER_ID"
+            else
+              echo "✗ Failed to start container"
+              exit 1
+            fi
+
+            # 컨테이너가 실제로 실행 중인지 확인 (3초 대기)
+            echo "Step 7: Verifying container is running..."
+            sleep 3
+            if docker ps | grep -q koco_new; then
+              echo "✓ Container is running"
+            else
+              echo "✗ Container started but is not running anymore"
+              echo "Container logs:"
+              docker logs koco_new 2>&1 || echo "Could not fetch logs"
+              exit 1
+            fi
 
             # 사용하지 않는 이미지 정리
+            echo "Step 8: Cleaning up old images..."
             docker image prune -f
+            echo "✓ Cleanup complete"
 
-            echo "Deployment completed successfully!"
+            echo ""
+            echo "=== Deployment completed successfully! ==="
           EOF
 
       # 6. 배포 확인
