@@ -5,11 +5,22 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    // 새로운 스키마를 사용하여 분석 이력 조회
-    // TODO: 실제 사용자 ID를 세션에서 가져오기
-    const userId = BigInt(1); // 임시로 고정값 사용
+    // 세션에서 실제 사용자 ID 가져오기
+    const session = await getServerSession(authOptions);
 
-    // xrayAnalyses 테이블에서 데이터 조회 (JSON 필드 포함)
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
+
+    // 세션에서 사용자 ID 가져오기
+    const userId = BigInt(session.user.id);
+
+    console.log('Fetching history for user:', userId.toString());
+
+    // xrayAnalyses 테이블에서 해당 사용자의 데이터만 조회
     const analyses = await prisma.xrayAnalysis.findMany({
       where: {
         userId: userId
