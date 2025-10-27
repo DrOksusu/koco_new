@@ -184,6 +184,22 @@ export default function DashboardPage() {
           setUploadedLandmarkResult(event.data.data.annotatedImageUrl); // 진단 완료 섹션에도 표시
         }
 
+        // 랜드마크 데이터를 sessionStorage에 저장 (PSA/PSO에서 Ruler 사용을 위해)
+        if (event.data.data.landmarks) {
+          sessionStorage.setItem('landmarkData', JSON.stringify(event.data.data.landmarks));
+          console.log('✅ Saved landmarkData to sessionStorage for PSA/PSO scale factor:', {
+            landmarkCount: Object.keys(event.data.data.landmarks).length,
+            hasRulerStart: !!event.data.data.landmarks['Ruler Start'],
+            hasRulerEnd: !!event.data.data.landmarks['Ruler End']
+          });
+        }
+
+        // analysisId를 sessionStorage에 저장 (PSA/PSO 업데이트를 위해)
+        if (event.data.data.analysisId) {
+          sessionStorage.setItem('analysisId', event.data.data.analysisId);
+          console.log('✅ Saved analysisId to sessionStorage:', event.data.data.analysisId);
+        }
+
         // MeasurementDashboard가 업데이트되도록 트리거
         if (event.data.data.measurements) {
           localStorage.setItem('landmarkAnalysisData', JSON.stringify({
@@ -579,10 +595,11 @@ export default function DashboardPage() {
           sessionStorage.removeItem('psaLandmarkData');
           sessionStorage.removeItem('psaReEdit');
           sessionStorage.removeItem('psaAnalysisData');
-          sessionStorage.removeItem('landmarkData'); // 일반 랜드마크 데이터도 삭제
+          // ⚠️ landmarkData는 PSA/PSO에서 Ruler 기반 스케일 팩터 계산에 필요하므로 삭제하지 않음
+          // sessionStorage.removeItem('landmarkData');
           localStorage.removeItem('psaAnalysisData'); // localStorage도 삭제
           console.log('After clear - sessionStorage keys:', Object.keys(sessionStorage));
-          console.log('🗑️ Cleared old PSA data for new analysis (session & local storage)');
+          console.log('🗑️ Cleared old PSA data for new analysis (keeping landmarkData for scale factor)');
 
           // 새 창으로 열기
           const newWindow = window.open('/psa', '_blank',
@@ -639,10 +656,11 @@ export default function DashboardPage() {
               sessionStorage.removeItem('psaLandmarkData');
               sessionStorage.removeItem('psaReEdit');
               sessionStorage.removeItem('psaAnalysisData');
-              sessionStorage.removeItem('landmarkData'); // 일반 랜드마크 데이터도 삭제
+              // ⚠️ landmarkData는 PSA/PSO에서 Ruler 기반 스케일 팩터 계산에 필요하므로 삭제하지 않음
+              // sessionStorage.removeItem('landmarkData');
               localStorage.removeItem('psaAnalysisData'); // localStorage도 삭제
               console.log('After clear - sessionStorage keys:', Object.keys(sessionStorage));
-              console.log('🗑️ Cleared old PSA data for new analysis (session & local storage)');
+              console.log('🗑️ Cleared old PSA data for new analysis (keeping landmarkData for scale factor)');
 
               // 새 창으로 열기
               const newWindow = window.open('/psa', '_blank',
@@ -691,10 +709,11 @@ export default function DashboardPage() {
           sessionStorage.removeItem('psoLandmarkData');
           sessionStorage.removeItem('psoReEdit');
           sessionStorage.removeItem('psoAnalysisData');
-          sessionStorage.removeItem('landmarkData'); // 일반 랜드마크 데이터도 삭제
+          // ⚠️ landmarkData는 PSA/PSO에서 Ruler 기반 스케일 팩터 계산에 필요하므로 삭제하지 않음
+          // sessionStorage.removeItem('landmarkData');
           localStorage.removeItem('psoAnalysisData'); // localStorage도 삭제
           console.log('After clear - sessionStorage keys:', Object.keys(sessionStorage));
-          console.log('🗑️ Cleared old PSO data for new analysis (session & local storage)');
+          console.log('🗑️ Cleared old PSO data for new analysis (keeping landmarkData for scale factor)');
 
           // 새 창으로 열기
           const newWindow = window.open('/pso', '_blank',
@@ -751,10 +770,11 @@ export default function DashboardPage() {
               sessionStorage.removeItem('psoLandmarkData');
               sessionStorage.removeItem('psoReEdit');
               sessionStorage.removeItem('psoAnalysisData');
-              sessionStorage.removeItem('landmarkData'); // 일반 랜드마크 데이터도 삭제
+              // ⚠️ landmarkData는 PSA/PSO에서 Ruler 기반 스케일 팩터 계산에 필요하므로 삭제하지 않음
+              // sessionStorage.removeItem('landmarkData');
               localStorage.removeItem('psoAnalysisData'); // localStorage도 삭제
               console.log('After clear - sessionStorage keys:', Object.keys(sessionStorage));
-              console.log('🗑️ Cleared old PSO data for new analysis (session & local storage)');
+              console.log('🗑️ Cleared old PSO data for new analysis (keeping landmarkData for scale factor)');
 
               // 새 창으로 열기
               const newWindow = window.open('/pso', '_blank',
