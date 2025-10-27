@@ -64,7 +64,7 @@
 
       # API Proxy - Forward /api/ requests to /new/api/ for Next.js app
       # This allows frontend code to use /api/ paths without /new prefix
-      location ~ ^/api/(landmark|upload|s3|generate-ppt|measurements|diagnosis|image-proxy|admin) {
+      location ~ ^/api/(landmark|upload|s3|generate-ppt|measurements|diagnosis|image-proxy|admin|psa|pso) {
           rewrite ^/api/(.*)$ /new/api/$1 break;
           proxy_pass http://koco_nextjs_new;
 
