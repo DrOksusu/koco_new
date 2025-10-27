@@ -78,15 +78,18 @@ export default function PSAAnalysisPage() {
         sessionStorage.removeItem('psaLandmarkData');
       }
 
-      // 랜드마크 데이터 결정: 재편집 시에만 psaLandmarkData 사용, 아니면 landmarkData 사용
+      // 랜드마크 데이터 결정
+      // - 재편집: psaLandmarkData 사용 (이전 PSA 작업 복원)
+      // - 새 분석: landmarkData 사용 (Landmark에서 이미 찍은 점 재사용)
       const landmarkDataToUse = isReEditMode
         ? (storedPsaLandmarkData || storedLandmarkData)  // 재편집: PSA 데이터 우선
-        : storedLandmarkData;  // 새 분석: 일반 랜드마크만 (Ruler 포함)
+        : storedLandmarkData;  // 새 분석: Landmark 데이터에서 재사용
 
       console.log('📊 Landmark data source:', {
         isReEditMode,
         usingPsaData: isReEditMode && !!storedPsaLandmarkData,
-        usingLandmarkData: !isReEditMode || (!storedPsaLandmarkData && !!storedLandmarkData)
+        usingLandmarkData: !isReEditMode && !!storedLandmarkData,
+        reusingLandmarkPoints: !isReEditMode && !!storedLandmarkData
       });
 
       if (landmarkDataToUse) {
@@ -95,15 +98,31 @@ export default function PSAAnalysisPage() {
           console.log('PSA Page - Loading existing PSA landmarks:', landmarkData);
           console.log('PSA Landmarks count:', Object.keys(landmarkData).length);
 
-          // PSA 6개 포인트만 필터링 (PSA_ 접두사 포함)
+          // PSA 랜드마크 이름 → Landmark 분석 이름 매핑
+          const landmarkNameMapping: Record<string, string> = {
+            'Mn.1 Crown': 'Mn.1 cr',      // PSA 이름 → Landmark 이름
+            'Mn.6 Distal': 'Mn.6 distal'  // 대소문자 차이
+          };
+
+          // PSA 6개 포인트만 필터링 (PSA_ 접두사 포함 또는 Landmark 이름 매핑)
           const psaOnlyLandmarks: Record<string, { x: number; y: number }> = {};
           PSA_LANDMARKS.forEach(landmarkName => {
-            // PSA_ 접두사가 있는 것을 우선 사용
+            // 1순위: PSA_ 접두사가 있는 것 (재편집 시)
             const keyWithPrefix = `PSA_${landmarkName}`;
             if (landmarkData[keyWithPrefix]) {
               psaOnlyLandmarks[landmarkName] = landmarkData[keyWithPrefix];
-            } else if (landmarkData[landmarkName]) {
+            }
+            // 2순위: 정확한 이름 매치
+            else if (landmarkData[landmarkName]) {
               psaOnlyLandmarks[landmarkName] = landmarkData[landmarkName];
+            }
+            // 3순위: 매핑된 이름 사용 (Landmark 분석에서 가져오기)
+            else {
+              const mappedName = landmarkNameMapping[landmarkName];
+              if (mappedName && landmarkData[mappedName]) {
+                psaOnlyLandmarks[landmarkName] = landmarkData[mappedName];
+                console.log(`✅ Mapped "${mappedName}" → "${landmarkName}"`);
+              }
             }
           });
 
