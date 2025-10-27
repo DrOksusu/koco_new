@@ -98,17 +98,34 @@ export default function PSAAnalysisPage() {
           console.log('PSA Page - Loading existing PSA landmarks:', landmarkData);
           console.log('PSA Landmarks count:', Object.keys(landmarkData).length);
 
+          // 재편집 호환성: 기존 DB에 저장된 옛날 이름도 체크
+          const oldNameMapping: Record<string, string> = {
+            'Mn.1 cr': 'Mn.1 Crown',      // 새 이름 → 옛날 이름
+            'Mn.6 distal': 'Mn.6 Distal'
+          };
+
           // PSA 6개 포인트만 필터링 (PSA_ 접두사 또는 정확한 이름 매치)
           const psaOnlyLandmarks: Record<string, { x: number; y: number }> = {};
           PSA_LANDMARKS.forEach(landmarkName => {
-            // 1순위: PSA_ 접두사가 있는 것 (재편집 시)
+            // 1순위: PSA_ 접두사가 있는 것 (재편집 시 - 새 이름)
             const keyWithPrefix = `PSA_${landmarkName}`;
             if (landmarkData[keyWithPrefix]) {
               psaOnlyLandmarks[landmarkName] = landmarkData[keyWithPrefix];
+              console.log(`✅ Found PSA_ prefix: ${keyWithPrefix}`);
             }
-            // 2순위: 정확한 이름 매치 (Landmark 분석에서 가져오기)
-            else if (landmarkData[landmarkName]) {
-              psaOnlyLandmarks[landmarkName] = landmarkData[landmarkName];
+            // 2순위: 옛날 이름으로 저장된 데이터 체크 (재편집 호환성)
+            else {
+              const oldName = oldNameMapping[landmarkName];
+              const oldKeyWithPrefix = oldName ? `PSA_${oldName}` : null;
+              if (oldKeyWithPrefix && landmarkData[oldKeyWithPrefix]) {
+                psaOnlyLandmarks[landmarkName] = landmarkData[oldKeyWithPrefix];
+                console.log(`✅ Found old name: ${oldKeyWithPrefix} → ${landmarkName}`);
+              }
+              // 3순위: 정확한 이름 매치 (Landmark 분석에서 가져오기)
+              else if (landmarkData[landmarkName]) {
+                psaOnlyLandmarks[landmarkName] = landmarkData[landmarkName];
+                console.log(`✅ Reusing Landmark: ${landmarkName}`);
+              }
             }
           });
 
