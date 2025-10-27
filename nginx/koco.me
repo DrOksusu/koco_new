@@ -58,7 +58,7 @@
       }
 
       # Page redirects - Forward Next.js pages to /new prefix
-      location ~ ^/(dashboard|history|psa|landmark|auth) {
+      location ~ ^/(dashboard|history|psa|pso|landmark|auth) {
           return 301 https://$host/new$request_uri;
       }
 
