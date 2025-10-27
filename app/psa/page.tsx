@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import PSACanvas from '@/components/PSACanvas';
 import MagnifierCanvas from '@/components/MagnifierCanvas';
 import GuideMessage from '@/components/GuideMessage';
+import { calculateScaleFactor } from '@/lib/calculations/distanceCalculations';
 
 // PSA 랜드마크 정의 (6개)
 const PSA_LANDMARKS = [
@@ -132,6 +133,31 @@ export default function PSAAnalysisPage() {
     }
   }, [landmarks]);
 
+  // Ruler 기반 스케일 팩터 가져오기
+  const getScaleFactor = (): number => {
+    // sessionStorage에서 전체 랜드마크 데이터 가져오기 (Ruler 포함)
+    const storedLandmarkData = sessionStorage.getItem('landmarkData');
+
+    if (storedLandmarkData) {
+      try {
+        const allLandmarks = JSON.parse(storedLandmarkData);
+
+        // Ruler Start/End가 있으면 스케일 팩터 계산
+        if (allLandmarks['Ruler Start'] && allLandmarks['Ruler End']) {
+          const scaleFactor = calculateScaleFactor(allLandmarks);
+          console.log('✅ Using Ruler scale factor:', scaleFactor);
+          return scaleFactor;
+        }
+      } catch (error) {
+        console.warn('Failed to get scale factor:', error);
+      }
+    }
+
+    // Ruler가 없으면 기본값 1 (픽셀 그대로)
+    console.warn('⚠️ Ruler not found, using default scale factor 1 (measurements will be in pixels)');
+    return 1;
+  };
+
   const performGeometricAnalysis = () => {
     const porion = landmarks['Porion'];
     const orbitale = landmarks['Orbitale'];
@@ -142,16 +168,28 @@ export default function PSAAnalysisPage() {
 
     if (!porion || !orbitale || !hingePoint || !mn1Cr || !mn6Distal || !symphysisLingual) return;
 
-    // Guide Zone (D1) 계산
+    // Guide Zone (D1) 계산 (픽셀)
     const fhPerpFromHinge = calculatePerpendicular(porion, orbitale, hingePoint);
     const fhPerpFromMn1 = calculatePerpendicular(porion, orbitale, mn1Cr);
-    const d1 = calculateDistance(fhPerpFromHinge, fhPerpFromMn1);
-    setGuideZone(d1);
+    const d1Pixels = calculateDistance(fhPerpFromHinge, fhPerpFromMn1);
 
-    // Buffer Zone (D2) 계산
+    // Buffer Zone (D2) 계산 (픽셀)
     const occPerpFromSymph = calculatePerpendicular(mn1Cr, mn6Distal, symphysisLingual);
-    const d2 = calculateDistance(occPerpFromSymph, mn1Cr);
-    setBufferZone(d2);
+    const d2Pixels = calculateDistance(occPerpFromSymph, mn1Cr);
+
+    // 스케일 팩터 적용하여 mm로 변환
+    const scaleFactor = getScaleFactor();
+    const d1Mm = Math.round(d1Pixels * scaleFactor * 10) / 10; // 소수점 첫째자리
+    const d2Mm = Math.round(d2Pixels * scaleFactor * 10) / 10;
+
+    setGuideZone(d1Mm);
+    setBufferZone(d2Mm);
+
+    console.log('📏 PSA Geometric Analysis:', {
+      guideZone: { pixels: d1Pixels.toFixed(2), mm: d1Mm },
+      bufferZone: { pixels: d2Pixels.toFixed(2), mm: d2Mm },
+      scaleFactor
+    });
   };
 
   // 기하학적 계산 함수들
@@ -480,13 +518,13 @@ export default function PSAAnalysisPage() {
                       {guideZone !== null && (
                         <div className="flex justify-between">
                           <span className="text-gray-300">Guide Zone (D1):</span>
-                          <span className="text-green-400 font-mono">{guideZone.toFixed(2)} px</span>
+                          <span className="text-green-400 font-mono">{guideZone.toFixed(2)} mm</span>
                         </div>
                       )}
                       {bufferZone !== null && (
                         <div className="flex justify-between">
                           <span className="text-gray-300">Buffer Zone (D2):</span>
-                          <span className="text-blue-400 font-mono">{bufferZone.toFixed(2)} px</span>
+                          <span className="text-blue-400 font-mono">{bufferZone.toFixed(2)} mm</span>
                         </div>
                       )}
                     </div>
