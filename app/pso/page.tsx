@@ -12,8 +12,8 @@ const PSO_LANDMARKS = [
   'Porion',
   'Orbitale',
   'Hinge Point',
-  'Mn.1 Crown',
-  'Mn.6 Distal',
+  'Mn.1 cr',
+  'Mn.6 distal',
   'Symphysis Lingual'
 ];
 
@@ -98,13 +98,7 @@ export default function PSOAnalysisPage() {
           console.log('PSO Page - Loading existing PSO landmarks:', landmarkData);
           console.log('PSO Landmarks count:', Object.keys(landmarkData).length);
 
-          // PSO 랜드마크 이름 → Landmark 분석 이름 매핑
-          const landmarkNameMapping: Record<string, string> = {
-            'Mn.1 Crown': 'Mn.1 cr',      // PSO 이름 → Landmark 이름
-            'Mn.6 Distal': 'Mn.6 distal'  // 대소문자 차이
-          };
-
-          // PSO 6개 포인트만 필터링 (PSO_ 접두사 포함 또는 Landmark 이름 매핑)
+          // PSO 6개 포인트만 필터링 (PSO_ 접두사 또는 정확한 이름 매치)
           const psoOnlyLandmarks: Record<string, { x: number; y: number }> = {};
           PSO_LANDMARKS.forEach(landmarkName => {
             // 1순위: PSO_ 접두사가 있는 것 (재편집 시)
@@ -112,17 +106,9 @@ export default function PSOAnalysisPage() {
             if (landmarkData[keyWithPrefix]) {
               psoOnlyLandmarks[landmarkName] = landmarkData[keyWithPrefix];
             }
-            // 2순위: 정확한 이름 매치
+            // 2순위: 정확한 이름 매치 (Landmark 분석에서 가져오기)
             else if (landmarkData[landmarkName]) {
               psoOnlyLandmarks[landmarkName] = landmarkData[landmarkName];
-            }
-            // 3순위: 매핑된 이름 사용 (Landmark 분석에서 가져오기)
-            else {
-              const mappedName = landmarkNameMapping[landmarkName];
-              if (mappedName && landmarkData[mappedName]) {
-                psoOnlyLandmarks[landmarkName] = landmarkData[mappedName];
-                console.log(`✅ Mapped "${mappedName}" → "${landmarkName}"`);
-              }
             }
           });
 
