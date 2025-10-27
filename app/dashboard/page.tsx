@@ -1342,6 +1342,14 @@ export default function DashboardPage() {
                       sessionStorage.setItem('psaLandmarkData', JSON.stringify(psaLandmarks));
                       console.log('✅ PSA landmarks saved to sessionStorage');
                     }
+
+                    // 전체 랜드마크 데이터도 저장 (Ruler 포함, PSA에서 스케일 팩터 계산에 필요)
+                    sessionStorage.setItem('landmarkData', JSON.stringify(landmarksData));
+                    console.log('✅ Saved all landmarks (including Ruler) to sessionStorage for scale factor:', {
+                      totalCount: Object.keys(landmarksData).length,
+                      hasRulerStart: !!landmarksData['Ruler Start'],
+                      hasRulerEnd: !!landmarksData['Ruler End']
+                    });
                   } else {
                     console.warn('⚠️ No PSA landmarks found in analysisData');
                   }
@@ -1455,6 +1463,14 @@ export default function DashboardPage() {
                       sessionStorage.setItem('psoLandmarkData', JSON.stringify(psoLandmarks));
                       console.log('✅ PSO landmarks saved to sessionStorage');
                     }
+
+                    // 전체 랜드마크 데이터도 저장 (Ruler 포함, PSO에서 스케일 팩터 계산에 필요)
+                    sessionStorage.setItem('landmarkData', JSON.stringify(landmarksData));
+                    console.log('✅ Saved all landmarks (including Ruler) to sessionStorage for scale factor:', {
+                      totalCount: Object.keys(landmarksData).length,
+                      hasRulerStart: !!landmarksData['Ruler Start'],
+                      hasRulerEnd: !!landmarksData['Ruler End']
+                    });
                   } else {
                     console.warn('⚠️ No PSO landmarks found in analysisData');
                   }
