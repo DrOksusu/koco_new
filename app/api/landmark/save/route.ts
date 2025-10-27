@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth/authOptions';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
+    // 세션에서 실제 사용자 ID 가져오기
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: 'Unauthorized - Please login' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const {
       analysisId, // 업데이트용 ID (있으면 업데이트, 없으면 생성)
@@ -73,10 +85,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Get actual user and clinic from session
-    // For now, using default values
-    const userId = BigInt(1); // BigInt
-    const clinicId = BigInt(1); // BigInt
+    // 세션에서 사용자 ID 가져오기
+    const userId = BigInt(session.user.id);
+
+    // 사용자의 clinicId 가져오기
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { clinicId: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    const clinicId = user.clinicId;
+
+    console.log('Saving analysis for user:', userId.toString(), 'clinic:', clinicId.toString());
 
     // URL에서 query parameters 제거 (pre-signed URL 파라미터 제거)
     const cleanUrl = (url: string | undefined | null): string | null => {
