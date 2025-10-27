@@ -56,16 +56,11 @@ export default function PSAAnalysisPage() {
       patientBirthDate: storedPatientBirthDate,
       hasPsaLandmarkData: !!storedPsaLandmarkData,
       hasLandmarkData: !!storedLandmarkData,
-      psaReEdit: psaReEdit
+      psaReEdit: psaReEdit,
+      isReEditMode: psaReEdit === 'true'
     });
     console.log('PSA sessionStorage keys:', Object.keys(sessionStorage));
     console.log('PSA localStorage keys:', Object.keys(localStorage));
-    if (storedPsaLandmarkData) {
-      console.log('❌ WARNING: Found old psaLandmarkData:', storedPsaLandmarkData.substring(0, 100));
-    }
-    if (storedLandmarkData) {
-      console.log('❌ WARNING: Found old landmarkData:', storedLandmarkData.substring(0, 100));
-    }
     console.log('========================================');
 
     if (storedImage) {
@@ -74,8 +69,25 @@ export default function PSAAnalysisPage() {
       setPatientName(storedPatientName || '');
       setPatientBirthDate(storedPatientBirthDate || '');
 
-      // PSA 전용 랜드마크 데이터 우선 로드 (재편집 시)
-      const landmarkDataToUse = storedPsaLandmarkData || storedLandmarkData;
+      // 재편집 모드 확인
+      const isReEditMode = psaReEdit === 'true';
+
+      // 재편집 모드가 아니면 이전 psaLandmarkData 삭제 (새 분석 시작)
+      if (!isReEditMode && storedPsaLandmarkData) {
+        console.log('🗑️ Removing old psaLandmarkData for new PSA analysis');
+        sessionStorage.removeItem('psaLandmarkData');
+      }
+
+      // 랜드마크 데이터 결정: 재편집 시에만 psaLandmarkData 사용, 아니면 landmarkData 사용
+      const landmarkDataToUse = isReEditMode
+        ? (storedPsaLandmarkData || storedLandmarkData)  // 재편집: PSA 데이터 우선
+        : storedLandmarkData;  // 새 분석: 일반 랜드마크만 (Ruler 포함)
+
+      console.log('📊 Landmark data source:', {
+        isReEditMode,
+        usingPsaData: isReEditMode && !!storedPsaLandmarkData,
+        usingLandmarkData: !isReEditMode || (!storedPsaLandmarkData && !!storedLandmarkData)
+      });
 
       if (landmarkDataToUse) {
         try {

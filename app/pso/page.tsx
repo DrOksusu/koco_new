@@ -56,16 +56,11 @@ export default function PSOAnalysisPage() {
       patientBirthDate: storedPatientBirthDate,
       hasPsoLandmarkData: !!storedPsoLandmarkData,
       hasLandmarkData: !!storedLandmarkData,
-      psoReEdit: psoReEdit
+      psoReEdit: psoReEdit,
+      isReEditMode: psoReEdit === 'true'
     });
     console.log('PSO sessionStorage keys:', Object.keys(sessionStorage));
     console.log('PSO localStorage keys:', Object.keys(localStorage));
-    if (storedPsoLandmarkData) {
-      console.log('❌ WARNING: Found old psoLandmarkData:', storedPsoLandmarkData.substring(0, 100));
-    }
-    if (storedLandmarkData) {
-      console.log('❌ WARNING: Found old landmarkData:', storedLandmarkData.substring(0, 100));
-    }
     console.log('========================================');
 
     if (storedImage) {
@@ -74,8 +69,25 @@ export default function PSOAnalysisPage() {
       setPatientName(storedPatientName || '');
       setPatientBirthDate(storedPatientBirthDate || '');
 
-      // PSO 전용 랜드마크 데이터 우선 로드 (재편집 시)
-      const landmarkDataToUse = storedPsoLandmarkData || storedLandmarkData;
+      // 재편집 모드 확인
+      const isReEditMode = psoReEdit === 'true';
+
+      // 재편집 모드가 아니면 이전 psoLandmarkData 삭제 (새 분석 시작)
+      if (!isReEditMode && storedPsoLandmarkData) {
+        console.log('🗑️ Removing old psoLandmarkData for new PSO analysis');
+        sessionStorage.removeItem('psoLandmarkData');
+      }
+
+      // 랜드마크 데이터 결정: 재편집 시에만 psoLandmarkData 사용, 아니면 landmarkData 사용
+      const landmarkDataToUse = isReEditMode
+        ? (storedPsoLandmarkData || storedLandmarkData)  // 재편집: PSO 데이터 우선
+        : storedLandmarkData;  // 새 분석: 일반 랜드마크만 (Ruler 포함)
+
+      console.log('📊 Landmark data source:', {
+        isReEditMode,
+        usingPsoData: isReEditMode && !!storedPsoLandmarkData,
+        usingLandmarkData: !isReEditMode || (!storedPsoLandmarkData && !!storedLandmarkData)
+      });
 
       if (landmarkDataToUse) {
         try {
