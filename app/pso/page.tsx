@@ -189,8 +189,33 @@ export default function PSOAnalysisPage() {
 
         // Ruler Start/End가 있으면 스케일 팩터 계산
         if (allLandmarks['Ruler Start'] && allLandmarks['Ruler End']) {
-          const scaleFactor = calculateScaleFactor(allLandmarks);
-          console.log('✅ Using Ruler scale factor:', scaleFactor);
+          // 이미지 로드하여 실제 크기 얻기
+          const img = new Image();
+          img.src = imageUrl;
+
+          // Normalized 좌표를 픽셀로 변환하는 함수
+          const toPixels = (coord: { x: number; y: number }) => {
+            if (coord.x < 2 && coord.y < 2) {
+              return { x: coord.x * img.naturalWidth, y: coord.y * img.naturalHeight };
+            }
+            return coord;
+          };
+
+          const rulerStart = toPixels(allLandmarks['Ruler Start']);
+          const rulerEnd = toPixels(allLandmarks['Ruler End']);
+
+          const dx = rulerEnd.x - rulerStart.x;
+          const dy = rulerEnd.y - rulerStart.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance === 0) {
+            console.warn('⚠️ Ruler distance is zero, using default scale factor 1');
+            return 1;
+          }
+
+          // Ruler는 실제로 20mm
+          const scaleFactor = Math.round((20 / distance) * 10000) / 10000;
+          console.log('✅ Using Ruler scale factor:', scaleFactor, 'mm/px (Ruler distance:', Math.round(distance), 'px)');
           return scaleFactor;
         }
       } catch (error) {
