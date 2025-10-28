@@ -140,13 +140,15 @@ export default function PSACanvas({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+    console.log('PSACanvas draw() - landmarks:', Object.keys(landmarks), 'count:', Object.keys(landmarks).length);
+
     // 기하학적 요소 그리기 (showGeometry가 true일 때 점진적으로 그리기)
     if (showGeometry) {
       const porion = landmarks['Porion'];
       const orbitale = landmarks['Orbitale'];
       const hingePoint = landmarks['Hinge Point'];
-      const mn1Cr = landmarks['Mn.1 Crown'];
-      const mn6Distal = landmarks['Mn.6 Distal'];
+      const mn1Cr = landmarks['Mn.1 cr'];
+      const mn6Distal = landmarks['Mn.6 distal'];
       const symphysisLingual = landmarks['Symphysis Lingual'];
 
       // 1. Porion과 Orbitale이 있으면 FH Line 그리기 - 검정색
