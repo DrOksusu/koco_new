@@ -1323,12 +1323,13 @@ export default function DashboardPage() {
                   if (analysisData && analysisData.landmarks) {
                     const landmarksData = analysisData.landmarks;
 
-                    // PSA_ 접두사가 있는 랜드마크만 필터링
+                    // PSA_ 접두사가 있는 랜드마크만 필터링 (새 이름과 옛날 이름 모두 지원)
                     const psaLandmarks: Record<string, { x: number; y: number }> = {};
                     Object.entries(landmarksData).forEach(([key, value]) => {
                       if (key.startsWith('PSA_') || [
                         'Porion', 'Orbitale', 'Hinge Point',
-                        'Mn.1 Crown', 'Mn.6 Distal', 'Symphysis Lingual'
+                        'Mn.1 cr', 'Mn.6 distal',  // 새 이름
+                        'Mn.1 Crown', 'Mn.6 Distal', 'Symphysis Lingual'  // 옛날 이름 호환
                       ].includes(key)) {
                         psaLandmarks[key] = value as { x: number; y: number };
                       }
@@ -1444,12 +1445,13 @@ export default function DashboardPage() {
                   if (analysisData && analysisData.landmarks) {
                     const landmarksData = analysisData.landmarks;
 
-                    // PSO_ 접두사가 있는 랜드마크만 필터링
+                    // PSO_ 접두사가 있는 랜드마크만 필터링 (새 이름과 옛날 이름 모두 지원)
                     const psoLandmarks: Record<string, { x: number; y: number }> = {};
                     Object.entries(landmarksData).forEach(([key, value]) => {
                       if (key.startsWith('PSO_') || [
                         'Porion', 'Orbitale', 'Hinge Point',
-                        'Mn.1 Crown', 'Mn.6 Distal', 'Symphysis Lingual'
+                        'Mn.1 cr', 'Mn.6 distal',  // 새 이름
+                        'Mn.1 Crown', 'Mn.6 Distal', 'Symphysis Lingual'  // 옛날 이름 호환
                       ].includes(key)) {
                         psoLandmarks[key] = value as { x: number; y: number };
                       }
