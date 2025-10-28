@@ -1322,6 +1322,7 @@ export default function DashboardPage() {
 
                   if (analysisData && analysisData.landmarks) {
                     const landmarksData = analysisData.landmarks;
+                    console.log('🔍 Available landmark keys in DB:', Object.keys(landmarksData));
 
                     // PSA_ 접두사가 있는 랜드마크만 필터링 (새 이름과 옛날 이름 모두 지원)
                     const psaLandmarks: Record<string, { x: number; y: number }> = {};
@@ -1444,6 +1445,7 @@ export default function DashboardPage() {
 
                   if (analysisData && analysisData.landmarks) {
                     const landmarksData = analysisData.landmarks;
+                    console.log('🔍 Available landmark keys in DB:', Object.keys(landmarksData));
 
                     // PSO_ 접두사가 있는 랜드마크만 필터링 (새 이름과 옛날 이름 모두 지원)
                     const psoLandmarks: Record<string, { x: number; y: number }> = {};
