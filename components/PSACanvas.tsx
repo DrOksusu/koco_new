@@ -141,6 +141,7 @@ export default function PSACanvas({
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     console.log('PSACanvas draw() - landmarks:', Object.keys(landmarks), 'count:', Object.keys(landmarks).length);
+    console.log('PSACanvas draw() - landmarks detail:', landmarks);
 
     // 기하학적 요소 그리기 (showGeometry가 true일 때 점진적으로 그리기)
     if (showGeometry) {
@@ -288,16 +289,19 @@ export default function PSACanvas({
     }
 
     // 랜드마크 그리기
+    console.log('Drawing landmarks...');
     Object.entries(landmarks).forEach(([name, pos]) => {
+      console.log(`Drawing landmark: ${name} at (${pos.x}, ${pos.y}), scaled: (${pos.x * scale}, ${pos.y * scale})`);
+
       ctx.fillStyle = '#FF0000';
       ctx.beginPath();
-      ctx.arc(pos.x * scale, pos.y * scale, 2, 0, 2 * Math.PI);
+      ctx.arc(pos.x * scale, pos.y * scale, 5, 0, 2 * Math.PI);  // radius 2 → 5로 크게
       ctx.fill();
 
       ctx.strokeStyle = '#FFFFFF';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(pos.x * scale, pos.y * scale, 2, 0, 2 * Math.PI);
+      ctx.arc(pos.x * scale, pos.y * scale, 5, 0, 2 * Math.PI);  // radius 2 → 5로 크게
       ctx.stroke();
 
       ctx.fillStyle = '#FFFFFF';
@@ -309,6 +313,7 @@ export default function PSACanvas({
       ctx.strokeText(name, textX, textY);
       ctx.fillText(name, textX, textY);
     });
+    console.log('Finished drawing landmarks');
 
     // 현재 위치 미리보기
     if (currentIndex < psaLandmarks.length) {
