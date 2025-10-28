@@ -263,14 +263,22 @@ export default function PSOAnalysisPage() {
     if (currentIndex >= PSO_LANDMARKS.length) return;
 
     const landmarkName = PSO_LANDMARKS[currentIndex];
-    setLandmarks(prev => ({
-      ...prev,
+    const newLandmarks = {
+      ...landmarks,
       [landmarkName]: { x, y }
-    }));
-    setCurrentIndex(prev => prev + 1);
+    };
+    setLandmarks(newLandmarks);
+
+    // 다음 누락된 랜드마크 찾기 (이미 있는 것은 건너뛰기)
+    let nextIndex = currentIndex + 1;
+    while (nextIndex < PSO_LANDMARKS.length && newLandmarks[PSO_LANDMARKS[nextIndex]]) {
+      console.log(`⏭️ Skipping already existing landmark: ${PSO_LANDMARKS[nextIndex]}`);
+      nextIndex++;
+    }
+    setCurrentIndex(nextIndex);
 
     // 음성 안내
-    speakGuide(currentIndex + 1);
+    speakGuide(nextIndex);
   };
 
   // 음성 안내 함수
