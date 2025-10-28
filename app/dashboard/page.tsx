@@ -107,7 +107,7 @@ export default function DashboardPage() {
   const [isFromHistory, setIsFromHistory] = useState(false);
   const [patientName, setPatientName] = useState('');
   const [patientBirthDate, setPatientBirthDate] = useState('');
-  const [diagnosisDate, setDiagnosisDate] = useState('');
+  const [diagnosisDate, setDiagnosisDate] = useState(() => new Date().toISOString().split('T')[0]); // 오늘 날짜로 기본 설정
   const [landmarkResultImage, setLandmarkResultImage] = useState<string | null>(null);
   const [psaResultImage, setPsaResultImage] = useState<string | null>(null);
   const [psoResultImage, setPsoResultImage] = useState<string | null>(null);
