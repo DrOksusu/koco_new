@@ -143,14 +143,22 @@ export default function PSACanvas({
     console.log('PSACanvas draw() - landmarks:', Object.keys(landmarks), 'count:', Object.keys(landmarks).length);
     console.log('PSACanvas draw() - landmarks detail:', landmarks);
 
+    // 정규화된 좌표를 실제 픽셀 좌표로 변환하는 헬퍼 함수
+    const normalizeCoord = (pos: { x: number; y: number }) => {
+      if (pos.x < 2 && pos.y < 2) {
+        return { x: pos.x * img.width, y: pos.y * img.height };
+      }
+      return pos;
+    };
+
     // 기하학적 요소 그리기 (showGeometry가 true일 때 점진적으로 그리기)
     if (showGeometry) {
-      const porion = landmarks['Porion'];
-      const orbitale = landmarks['Orbitale'];
-      const hingePoint = landmarks['Hinge Point'];
-      const mn1Cr = landmarks['Mn.1 cr'];
-      const mn6Distal = landmarks['Mn.6 distal'];
-      const symphysisLingual = landmarks['Symphysis Lingual'];
+      const porion = landmarks['Porion'] ? normalizeCoord(landmarks['Porion']) : null;
+      const orbitale = landmarks['Orbitale'] ? normalizeCoord(landmarks['Orbitale']) : null;
+      const hingePoint = landmarks['Hinge Point'] ? normalizeCoord(landmarks['Hinge Point']) : null;
+      const mn1Cr = landmarks['Mn.1 cr'] ? normalizeCoord(landmarks['Mn.1 cr']) : null;
+      const mn6Distal = landmarks['Mn.6 distal'] ? normalizeCoord(landmarks['Mn.6 distal']) : null;
+      const symphysisLingual = landmarks['Symphysis Lingual'] ? normalizeCoord(landmarks['Symphysis Lingual']) : null;
 
       // 1. Porion과 Orbitale이 있으면 FH Line 그리기 - 검정색
       if (porion && orbitale) {
@@ -291,25 +299,30 @@ export default function PSACanvas({
     // 랜드마크 그리기
     console.log('Drawing landmarks...');
     Object.entries(landmarks).forEach(([name, pos]) => {
-      console.log(`Drawing landmark: ${name} at (${pos.x}, ${pos.y}), scaled: (${pos.x * scale}, ${pos.y * scale})`);
+      // 정규화된 좌표(0~1)를 실제 픽셀 좌표로 변환
+      // pos.x < 2 인 경우 정규화된 좌표로 판단
+      const actualX = pos.x < 2 ? pos.x * img.width : pos.x;
+      const actualY = pos.y < 2 ? pos.y * img.height : pos.y;
+
+      console.log(`Drawing landmark: ${name} at normalized (${pos.x}, ${pos.y}), actual (${actualX}, ${actualY}), scaled: (${actualX * scale}, ${actualY * scale})`);
 
       ctx.fillStyle = '#FF0000';
       ctx.beginPath();
-      ctx.arc(pos.x * scale, pos.y * scale, 5, 0, 2 * Math.PI);  // radius 2 → 5로 크게
+      ctx.arc(actualX * scale, actualY * scale, 5, 0, 2 * Math.PI);
       ctx.fill();
 
       ctx.strokeStyle = '#FFFFFF';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(pos.x * scale, pos.y * scale, 5, 0, 2 * Math.PI);  // radius 2 → 5로 크게
+      ctx.arc(actualX * scale, actualY * scale, 5, 0, 2 * Math.PI);
       ctx.stroke();
 
       ctx.fillStyle = '#FFFFFF';
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 3;
       ctx.font = 'bold 12px Arial';
-      const textX = pos.x * scale + 8;
-      const textY = pos.y * scale - 8;
+      const textX = actualX * scale + 8;
+      const textY = actualY * scale - 8;
       ctx.strokeText(name, textX, textY);
       ctx.fillText(name, textX, textY);
     });
