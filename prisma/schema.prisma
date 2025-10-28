@@ -77,6 +77,7 @@ model XrayAnalysis {
   patientId         BigInt?            @map("patient_id")
   patientName       String             @map("patient_name") @db.VarChar(100)
   patientBirthDate  DateTime?          @map("patient_birth_date") @db.Date
+  diagnosisDate     DateTime?          @map("diagnosis_date") @db.Date
   xrayType          XrayType?          @default(lateral) @map("xray_type")
   originalImageUrl  String?            @map("original_image_url") @db.Text
   annotatedImageUrl String?            @map("annotated_image_url") @db.Text // 호환성 유지용 (deprecated)

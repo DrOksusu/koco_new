@@ -8,12 +8,13 @@ import { prisma } from '@/lib/prisma';
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { analysisId, patientName, patientBirthDate } = body;
+    const { analysisId, patientName, patientBirthDate, diagnosisDate } = body;
 
     console.log('Updating patient info:', {
       analysisId,
       patientName,
-      patientBirthDate
+      patientBirthDate,
+      diagnosisDate
     });
 
     // 필수 파라미터 검증
@@ -28,6 +29,7 @@ export async function PATCH(request: NextRequest) {
     const updateData: {
       patientName?: string;
       patientBirthDate?: Date | null;
+      diagnosisDate?: Date | null;
     } = {};
 
     if (patientName !== undefined) {
@@ -36,6 +38,10 @@ export async function PATCH(request: NextRequest) {
 
     if (patientBirthDate !== undefined) {
       updateData.patientBirthDate = patientBirthDate ? new Date(patientBirthDate) : null;
+    }
+
+    if (diagnosisDate !== undefined) {
+      updateData.diagnosisDate = diagnosisDate ? new Date(diagnosisDate) : null;
     }
 
     // 데이터베이스 업데이트
@@ -48,6 +54,7 @@ export async function PATCH(request: NextRequest) {
         id: true,
         patientName: true,
         patientBirthDate: true,
+        diagnosisDate: true,
         updatedAt: true
       }
     });
@@ -61,6 +68,7 @@ export async function PATCH(request: NextRequest) {
         id: updatedAnalysis.id.toString(),
         patientName: updatedAnalysis.patientName,
         patientBirthDate: updatedAnalysis.patientBirthDate,
+        diagnosisDate: updatedAnalysis.diagnosisDate,
         updatedAt: updatedAnalysis.updatedAt
       }
     });

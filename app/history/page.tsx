@@ -341,7 +341,8 @@ export default function HistoryPage() {
       originalImageUrl: diagnosis.result.originalImageUrl || diagnosis.result.imageUrl || '', // 원본 이미지
       fileName: diagnosis.title || diagnosis.result.fileName || 'analysis',
       patientName: diagnosis.result.patientName || '',
-      patientBirthDate: diagnosis.result.patientBirthDate || ''
+      patientBirthDate: diagnosis.result.patientBirthDate || '',
+      diagnosisDate: diagnosis.result.diagnosisDate || ''
     };
 
     console.log('Re-edit analysis data:', analysisData);
@@ -353,6 +354,9 @@ export default function HistoryPage() {
     }
     if (diagnosis.result.patientBirthDate) {
       sessionStorage.setItem('patientBirthDate', diagnosis.result.patientBirthDate);
+    }
+    if (diagnosis.result.diagnosisDate) {
+      sessionStorage.setItem('diagnosisDate', diagnosis.result.diagnosisDate);
     }
 
     // 새 창에서 랜드마크 페이지 열기
@@ -495,6 +499,12 @@ export default function HistoryPage() {
                       {diagnosis.result?.patientBirthDate && (
                         <p className="text-sm text-gray-600 mb-1">
                           생년월일: {new Date(diagnosis.result.patientBirthDate).toLocaleDateString('ko-KR')}
+                        </p>
+                      )}
+
+                      {diagnosis.result?.diagnosisDate && (
+                        <p className="text-sm text-gray-600 mb-1">
+                          진단월일: {new Date(diagnosis.result.diagnosisDate).toLocaleDateString('ko-KR')}
                         </p>
                       )}
 

@@ -107,6 +107,7 @@ export default function DashboardPage() {
   const [isFromHistory, setIsFromHistory] = useState(false);
   const [patientName, setPatientName] = useState('');
   const [patientBirthDate, setPatientBirthDate] = useState('');
+  const [diagnosisDate, setDiagnosisDate] = useState('');
   const [landmarkResultImage, setLandmarkResultImage] = useState<string | null>(null);
   const [psaResultImage, setPsaResultImage] = useState<string | null>(null);
   const [psoResultImage, setPsoResultImage] = useState<string | null>(null);
@@ -134,7 +135,8 @@ export default function DashboardPage() {
         console.log('Auto-saving patient info:', {
           analysisId: analysisData.analysisId,
           patientName,
-          patientBirthDate
+          patientBirthDate,
+          diagnosisDate
         });
 
         const response = await fetch('/api/landmark/update-patient', {
@@ -143,7 +145,8 @@ export default function DashboardPage() {
           body: JSON.stringify({
             analysisId: analysisData.analysisId,
             patientName,
-            patientBirthDate
+            patientBirthDate,
+            diagnosisDate
           })
         });
 
@@ -163,7 +166,7 @@ export default function DashboardPage() {
 
     // cleanup: 3초 이내에 다시 변경되면 이전 타이머 취소
     return () => clearTimeout(timeoutId);
-  }, [patientName, patientBirthDate, analysisData?.analysisId]);
+  }, [patientName, patientBirthDate, diagnosisDate, analysisData?.analysisId]);
 
   // 분석 이력에서 데이터 받기 및 랜드마크 창에서 데이터 받기
   useEffect(() => {
@@ -267,6 +270,12 @@ export default function DashboardPage() {
         // ISO 날짜 형식을 yyyy-MM-dd로 변환
         const birthDate = data.patientBirthDate.split('T')[0];
         setPatientBirthDate(birthDate);
+      }
+      if (data.diagnosisDate) {
+        console.log('Setting diagnosis date:', data.diagnosisDate);
+        // ISO 날짜 형식을 yyyy-MM-dd로 변환
+        const diagDate = data.diagnosisDate.split('T')[0];
+        setDiagnosisDate(diagDate);
       }
 
       // 이미지 URL이 있으면 미리보기 URL로 설정
@@ -892,7 +901,7 @@ export default function DashboardPage() {
 
           {/* 환자 정보 입력 폼 */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   환자 이름 <span className="text-red-500">*</span>
@@ -913,6 +922,17 @@ export default function DashboardPage() {
                   type="date"
                   value={patientBirthDate}
                   onChange={(e) => setPatientBirthDate(e.target.value)}
+                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  진단월일
+                </label>
+                <input
+                  type="date"
+                  value={diagnosisDate}
+                  onChange={(e) => setDiagnosisDate(e.target.value)}
                   className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>

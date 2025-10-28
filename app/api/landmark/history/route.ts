@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
           fileName: analysis.fileName,
           patientName: analysis.patientName,
           patientBirthDate: analysis.patientBirthDate,
+          diagnosisDate: analysis.diagnosisDate,
           type: analysisType // result 내에도 type 추가
         },
         createdAt: analysis.createdAt?.toISOString() || new Date().toISOString()
