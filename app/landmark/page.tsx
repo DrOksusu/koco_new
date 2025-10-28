@@ -28,6 +28,7 @@ export default function LandmarkPage() {
   const [magnifierMessage, setMagnifierMessage] = useState(false);
   const [isReEditMode, setIsReEditMode] = useState(false);
   const [analysisId, setAnalysisId] = useState<string>('');
+  const currentLandmarkRef = useRef<HTMLDivElement>(null);
 
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
@@ -182,6 +183,16 @@ export default function LandmarkPage() {
       router.push('/dashboard');
     }
   }, [router]);
+
+  // 현재 랜드마크로 자동 스크롤
+  useEffect(() => {
+    if (currentLandmarkRef.current) {
+      currentLandmarkRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [currentIndex]);
 
   // 이미지 준비 전에는 캔버스 렌더를 지연하고 로딩 표시
   const isImageReady = Boolean(imageUrl && imageUrl.length > 0);
@@ -617,6 +628,7 @@ export default function LandmarkPage() {
                     return (
                       <div
                         key={landmark}
+                        ref={isCurrent ? currentLandmarkRef : null}
                         className={`flex items-center space-x-2 p-1.5 rounded text-xs transition-all ${
                           isCompleted
                             ? 'bg-green-900/30 text-green-400'
