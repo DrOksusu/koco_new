@@ -213,28 +213,61 @@ export default function PSAAnalysisPage() {
 
     if (!porion || !orbitale || !hingePoint || !mn1Cr || !mn6Distal || !symphysisLingual) return;
 
-    // Guide Zone (D1) 계산 (픽셀)
-    const fhPerpFromHinge = calculatePerpendicular(porion, orbitale, hingePoint);
-    const fhPerpFromMn1 = calculatePerpendicular(porion, orbitale, mn1Cr);
-    const d1Pixels = calculateDistance(fhPerpFromHinge, fhPerpFromMn1);
+    // Canvas에서 이미지 크기 가져오기
+    const canvas = document.getElementById('psaCanvas') as HTMLCanvasElement;
+    if (!canvas) {
+      console.error('Canvas not found for geometric analysis');
+      return;
+    }
 
-    // Buffer Zone (D2) 계산 (픽셀)
-    const occPerpFromSymph = calculatePerpendicular(mn1Cr, mn6Distal, symphysisLingual);
-    const d2Pixels = calculateDistance(occPerpFromSymph, mn1Cr);
+    const img = new Image();
+    img.onload = () => {
+      // 정규화된 좌표를 실제 픽셀로 변환하는 함수
+      const toPixels = (coord: { x: number; y: number }) => {
+        if (coord.x < 2 && coord.y < 2) {
+          return { x: coord.x * img.width, y: coord.y * img.height };
+        }
+        return coord;
+      };
 
-    // 스케일 팩터 적용하여 mm로 변환
-    const scaleFactor = getScaleFactor();
-    const d1Mm = Math.round(d1Pixels * scaleFactor * 10) / 10; // 소수점 첫째자리
-    const d2Mm = Math.round(d2Pixels * scaleFactor * 10) / 10;
+      const porionPx = toPixels(porion);
+      const orbitalePx = toPixels(orbitale);
+      const hingePointPx = toPixels(hingePoint);
+      const mn1CrPx = toPixels(mn1Cr);
+      const mn6DistalPx = toPixels(mn6Distal);
+      const symphysisLingualPx = toPixels(symphysisLingual);
 
-    setGuideZone(d1Mm);
-    setBufferZone(d2Mm);
+      console.log('📐 Converted coordinates:', {
+        porion: { normalized: porion, pixels: porionPx },
+        orbitale: { normalized: orbitale, pixels: orbitalePx }
+      });
 
-    console.log('📏 PSA Geometric Analysis:', {
-      guideZone: { pixels: d1Pixels.toFixed(2), mm: d1Mm },
-      bufferZone: { pixels: d2Pixels.toFixed(2), mm: d2Mm },
-      scaleFactor
-    });
+      // Guide Zone (D1) 계산 (픽셀)
+      const fhPerpFromHinge = calculatePerpendicular(porionPx, orbitalePx, hingePointPx);
+      const fhPerpFromMn1 = calculatePerpendicular(porionPx, orbitalePx, mn1CrPx);
+      const d1Pixels = calculateDistance(fhPerpFromHinge, fhPerpFromMn1);
+
+      // Buffer Zone (D2) 계산 (픽셀)
+      const occPerpFromSymph = calculatePerpendicular(mn1CrPx, mn6DistalPx, symphysisLingualPx);
+      const d2Pixels = calculateDistance(occPerpFromSymph, mn1CrPx);
+
+      // 스케일 팩터 적용하여 mm로 변환
+      const scaleFactor = getScaleFactor();
+      const d1Mm = Math.round(d1Pixels * scaleFactor * 10) / 10; // 소수점 첫째자리
+      const d2Mm = Math.round(d2Pixels * scaleFactor * 10) / 10;
+
+      setGuideZone(d1Mm);
+      setBufferZone(d2Mm);
+
+      console.log('📏 PSA Geometric Analysis:', {
+        imageSize: { width: img.width, height: img.height },
+        guideZone: { pixels: d1Pixels.toFixed(2), mm: d1Mm },
+        bufferZone: { pixels: d2Pixels.toFixed(2), mm: d2Mm },
+        scaleFactor
+      });
+    };
+
+    img.src = imageUrl;
   };
 
   // 기하학적 계산 함수들
