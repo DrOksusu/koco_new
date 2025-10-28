@@ -137,8 +137,16 @@ export default function PSAAnalysisPage() {
           if (Object.keys(psaOnlyLandmarks).length === PSA_LANDMARKS.length) {
             setCurrentIndex(PSA_LANDMARKS.length);
           } else {
-            // 일부만 있으면 다음 입력할 인덱스로 설정
-            setCurrentIndex(Object.keys(psaOnlyLandmarks).length);
+            // 첫 번째 누락된 랜드마크의 인덱스를 찾아서 설정
+            let firstMissingIndex = 0;
+            for (let i = 0; i < PSA_LANDMARKS.length; i++) {
+              if (!psaOnlyLandmarks[PSA_LANDMARKS[i]]) {
+                firstMissingIndex = i;
+                console.log(`📍 First missing landmark: ${PSA_LANDMARKS[i]} at index ${i}`);
+                break;
+              }
+            }
+            setCurrentIndex(firstMissingIndex);
           }
         } catch (error) {
           console.error('Failed to parse PSA landmark data:', error);
@@ -196,8 +204,8 @@ export default function PSAAnalysisPage() {
     const porion = landmarks['Porion'];
     const orbitale = landmarks['Orbitale'];
     const hingePoint = landmarks['Hinge Point'];
-    const mn1Cr = landmarks['Mn.1 Crown'];
-    const mn6Distal = landmarks['Mn.6 Distal'];
+    const mn1Cr = landmarks['Mn.1 cr'];
+    const mn6Distal = landmarks['Mn.6 distal'];
     const symphysisLingual = landmarks['Symphysis Lingual'];
 
     if (!porion || !orbitale || !hingePoint || !mn1Cr || !mn6Distal || !symphysisLingual) return;
