@@ -30,6 +30,9 @@ export default function LandmarkPage() {
   const [analysisId, setAnalysisId] = useState<string>('');
   const currentLandmarkRef = useRef<HTMLDivElement>(null);
 
+  // basePath 처리 (production에서는 /new 추가)
+  const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
     // URL 파라미터 체크 (재편집 모드)
@@ -606,7 +609,7 @@ export default function LandmarkPage() {
               {/* 참조 이미지 */}
               <div className="relative">
                 <img
-                  src="/images/landmarks/landmark.png"
+                  src={`${basePath}/images/landmarks/landmark.png`}
                   alt="Landmark Reference"
                   className="w-full object-contain cursor-pointer"
                   onDoubleClick={() => setIsReferencePopup(true)}
@@ -748,7 +751,7 @@ export default function LandmarkPage() {
         >
           <div className="relative max-w-[90vw] max-h-[90vh]">
             <img
-              src="/images/landmarks/landmark.png"
+              src={`${basePath}/images/landmarks/landmark.png`}
               alt="Landmark Reference"
               className="w-full h-full object-contain"
               style={{ transform: 'scale(1.1)' }}

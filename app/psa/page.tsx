@@ -37,6 +37,9 @@ export default function PSAAnalysisPage() {
   const [guideZone, setGuideZone] = useState<number | null>(null);
   const [bufferZone, setBufferZone] = useState<number | null>(null);
 
+  // basePath 처리 (production에서는 /new 추가)
+  const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+
   // 세션 스토리지에서 데이터 로드
   useEffect(() => {
     const storedImage = sessionStorage.getItem('xrayImage');
@@ -507,7 +510,7 @@ export default function PSAAnalysisPage() {
               {/* 참조 이미지 */}
               <div className="relative">
                 <img
-                  src="/images/landmarks/psa_diagram.png"
+                  src={`${basePath}/images/landmarks/psa_diagram.png`}
                   alt="PSA Reference"
                   className="w-full object-contain cursor-pointer"
                   onDoubleClick={() => setIsReferencePopup(true)}
@@ -667,7 +670,7 @@ export default function PSAAnalysisPage() {
         >
           <div className="relative max-w-[90vw] max-h-[90vh]">
             <img
-              src="/images/landmarks/psa_diagram.png"
+              src={`${basePath}/images/landmarks/psa_diagram.png`}
               alt="PSA Reference"
               className="w-full h-full object-contain"
               style={{ transform: 'scale(1.1)' }}
