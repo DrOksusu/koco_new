@@ -276,6 +276,10 @@ export default function DashboardPage() {
         // ISO 날짜 형식을 yyyy-MM-dd로 변환
         const diagDate = data.diagnosisDate.split('T')[0];
         setDiagnosisDate(diagDate);
+      } else {
+        // 기존 데이터에 진단월일이 없으면 오늘 날짜로 설정
+        console.log('No diagnosis date in data, using today');
+        setDiagnosisDate(new Date().toISOString().split('T')[0]);
       }
 
       // 이미지 URL이 있으면 미리보기 URL로 설정
