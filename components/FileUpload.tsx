@@ -122,7 +122,7 @@ export default function FileUpload({
         onDrop={handleDrop}
         onClick={handleClick}
         className={`
-          relative border-2 border-dashed rounded-lg p-6
+          relative border-2 border-dashed rounded-lg p-4
           transition-all duration-200 cursor-pointer
           w-full h-full flex flex-col justify-center items-center
           overflow-hidden
@@ -132,7 +132,7 @@ export default function FileUpload({
           }
         `}
         style={{
-          minHeight: '280px',
+          minHeight: '196px',
           backgroundColor: isDragging ? '#eff6ff' : '#f9fafb'
         }}
       >
@@ -161,7 +161,7 @@ export default function FileUpload({
 
         <div className="text-center relative z-10">
           <svg
-            className={`mx-auto h-8 w-8 ${
+            className={`mx-auto h-6 w-6 ${
               isDragging ? 'text-blue-500' : 'text-gray-400'
             }`}
             fill="none"
@@ -176,14 +176,14 @@ export default function FileUpload({
             />
           </svg>
 
-          <p className="mt-3 text-sm font-medium text-gray-900">
+          <p className="mt-2 text-sm font-medium text-gray-900">
             {isDragging ? '파일을 놓아주세요' : '클릭하거나 파일을 드래그하세요'}
           </p>
 
-          <p className="mt-1.5 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-gray-500">
             Lateral Cephalometric X-ray 이미지
           </p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-0.5 text-xs text-gray-400">
             지원 형식: DICOM, JPG, PNG, PDF
           </p>
 
@@ -193,14 +193,14 @@ export default function FileUpload({
         </div>
 
         {/* 업로드 버튼 (모바일 친화적) */}
-        <div className="mt-3 flex justify-center relative z-10">
+        <div className="mt-2 flex justify-center relative z-10">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               handleClick();
             }}
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-2.5 py-1 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             파일 선택
           </button>
