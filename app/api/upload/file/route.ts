@@ -35,13 +35,18 @@ export async function POST(request: NextRequest) {
 
     console.log('S3 Key:', s3Key);
 
+    // 한글 파일명을 안전하게 인코딩 (RFC 2231)
+    const encodedFileName = encodeURIComponent(file.name);
+    const asciiFileName = file.name.replace(/[^\x00-\x7F]/g, '_'); // 한글을 _로 치환한 ASCII 버전
+
     // S3에 업로드
     const command = new PutObjectCommand({
       Bucket: process.env.S3_BUCKET_NAME || 'koco-dental-files',
       Key: s3Key,
       Body: buffer,
       ContentType: file.type,
-      ContentDisposition: `inline; filename="${file.name}"`,
+      // RFC 2231 형식: ASCII 파일명 + UTF-8 인코딩된 파일명
+      ContentDisposition: `inline; filename="${asciiFileName}"; filename*=UTF-8''${encodedFileName}`,
     });
 
     await s3Client.send(command);
