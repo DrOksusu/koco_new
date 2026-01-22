@@ -2,10 +2,18 @@
 
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function SignUpPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleGoogleSignUp = async () => {
     setLoading(true);
@@ -14,6 +22,40 @@ export default function SignUpPage() {
     } catch (error) {
       console.error('Error signing up with Google:', error);
       setLoading(false);
+    }
+  };
+
+  const handleEmailSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setEmailLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || '회원가입에 실패했습니다.');
+        setEmailLoading(false);
+        return;
+      }
+
+      setSuccess('회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.');
+      setTimeout(() => {
+        router.push('/auth/signin');
+      }, 2000);
+    } catch (error) {
+      console.error('Error signing up with email:', error);
+      setError('회원가입 중 오류가 발생했습니다.');
+      setEmailLoading(false);
     }
   };
 
@@ -28,7 +70,7 @@ export default function SignUpPage() {
         <div className="space-y-4">
           <button
             onClick={handleGoogleSignUp}
-            disabled={loading}
+            disabled={loading || emailLoading}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -61,7 +103,19 @@ export default function SignUpPage() {
             </div>
           </div>
 
-          <form className="space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
+              {success}
+            </div>
+          )}
+
+          <form onSubmit={handleEmailSignUp} className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 이름
@@ -69,6 +123,9 @@ export default function SignUpPage() {
               <input
                 id="name"
                 type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="홍길동"
               />
@@ -81,6 +138,9 @@ export default function SignUpPage() {
               <input
                 id="email"
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="your@email.com"
               />
@@ -93,6 +153,10 @@ export default function SignUpPage() {
               <input
                 id="password"
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="8자 이상"
               />
@@ -100,10 +164,10 @@ export default function SignUpPage() {
 
             <button
               type="submit"
-              disabled
+              disabled={emailLoading || loading}
               className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              이메일로 회원가입 (준비 중)
+              {emailLoading ? '회원가입 중...' : '이메일로 회원가입'}
             </button>
           </form>
 

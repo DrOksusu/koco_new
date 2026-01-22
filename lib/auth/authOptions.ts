@@ -1,6 +1,8 @@
 import GoogleProvider from 'next-auth/providers/google';
+import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '@/lib/prisma';
 import { AuthOptions } from 'next-auth';
+import bcrypt from 'bcryptjs';
 
 // Admin emails list - these emails will automatically get admin role
 const ADMIN_EMAILS = [
@@ -13,6 +15,55 @@ export const authOptions: AuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    CredentialsProvider({
+      name: 'credentials',
+      credentials: {
+        email: { label: '이메일', type: 'email' },
+        password: { label: '비밀번호', type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error('이메일과 비밀번호를 입력해주세요.');
+        }
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+
+        if (!user) {
+          throw new Error('등록되지 않은 이메일입니다.');
+        }
+
+        if (!user.passwordHash) {
+          throw new Error('이 계정은 Google 로그인을 사용해주세요.');
+        }
+
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          user.passwordHash
+        );
+
+        if (!isPasswordValid) {
+          throw new Error('비밀번호가 일치하지 않습니다.');
+        }
+
+        if (!user.isActive) {
+          throw new Error('비활성화된 계정입니다.');
+        }
+
+        // Update last login
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        });
+
+        return {
+          id: user.id.toString(),
+          email: user.email,
+          name: user.username,
+        };
+      },
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET!,
