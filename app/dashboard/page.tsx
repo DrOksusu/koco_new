@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useMeasurementStore } from '@/store/measurementStore';
 import { imageCache } from '@/lib/imageCache';
 import { generatePowerPoint, canGeneratePowerPoint } from '@/lib/services/powerpointService';
+import toast, { Toaster } from 'react-hot-toast';
 
 // 최적화된 S3 이미지 컴포넌트 (imageCache 사용)
 const S3Image = memo(function S3Image({
@@ -120,6 +121,8 @@ export default function DashboardPage() {
   const [frontalPreviewUrls, setFrontalPreviewUrls] = useState<string[]>([]);
   const [diagnosisType, setDiagnosisType] = useState<'LANDMARK' | 'PSA' | 'PSO'>('LANDMARK');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showUploadTooltip, setShowUploadTooltip] = useState(false);
+  const [showFrontalTooltip, setShowFrontalTooltip] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [isFromHistory, setIsFromHistory] = useState(false);
   const [patientName, setPatientName] = useState('');
@@ -514,7 +517,8 @@ export default function DashboardPage() {
 
   const handleStartDiagnosis = async (type: 'LANDMARK' | 'PSA' | 'PSO') => {
     if (uploadedFiles.length === 0) {
-      alert('파일을 먼저 업로드해주세요.');
+      setShowUploadTooltip(true);
+      setTimeout(() => setShowUploadTooltip(false), 2500);
       return;
     }
 
@@ -855,6 +859,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-center" />
       {/* 헤더 - 전체 너비 */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1099,6 +1104,52 @@ export default function DashboardPage() {
                 )}
               </div>
 
+              {/* 진단 유형 버튼 - Lateral Ceph 아래 */}
+              <div className="relative flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => { setDiagnosisType('LANDMARK'); handleStartDiagnosis('LANDMARK'); }}
+                  disabled={isProcessing}
+                  className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                    uploadedFiles.length > 0 && !isProcessing
+                      ? 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-500'
+                  } ${diagnosisType === 'LANDMARK' ? 'ring-2 ring-blue-400' : ''}`}
+                >
+                  Landmarks
+                </button>
+                <button
+                  onClick={() => { setDiagnosisType('PSA'); handleStartDiagnosis('PSA'); }}
+                  disabled={isProcessing}
+                  className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                    uploadedFiles.length > 0 && !isProcessing
+                      ? 'bg-green-100 hover:bg-green-200 text-green-700'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-500'
+                  } ${diagnosisType === 'PSA' ? 'ring-2 ring-green-400' : ''}`}
+                >
+                  PSA
+                </button>
+                <button
+                  onClick={() => { setDiagnosisType('PSO'); handleStartDiagnosis('PSO'); }}
+                  disabled={isProcessing}
+                  className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                    uploadedFiles.length > 0 && !isProcessing
+                      ? 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-500'
+                  } ${diagnosisType === 'PSO' ? 'ring-2 ring-purple-400' : ''}`}
+                >
+                  PSO
+                </button>
+                {isProcessing && <span className="text-sm text-yellow-600 font-medium">진단 중...</span>}
+
+                {/* 업로드 안내 툴팁 */}
+                {showUploadTooltip && (
+                  <div className="absolute left-0 -top-10 bg-red-500 text-white text-xs px-3 py-2 rounded shadow-lg whitespace-nowrap z-50 animate-pulse">
+                    ⬆️ Lateral Ceph 이미지를 먼저 업로드해주세요
+                    <div className="absolute left-4 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-red-500"></div>
+                  </div>
+                )}
+              </div>
+
               {/* Frontal Ceph 업로드 영역 */}
               <div className="mb-2">
                 <p className="text-xs text-gray-600 mb-1">Frontal Ceph</p>
@@ -1134,43 +1185,36 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* 진단 유형 버튼 - 간소화 */}
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs text-gray-600">진단:</span>
+              {/* Frontal 분석 버튼 */}
+              <div className="relative flex items-center gap-2 mb-2">
                 <button
-                  onClick={() => { setDiagnosisType('LANDMARK'); handleStartDiagnosis('LANDMARK'); }}
-                  disabled={uploadedFiles.length === 0 || isProcessing}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
-                    uploadedFiles.length > 0 && !isProcessing
-                      ? 'bg-blue-100 hover:bg-blue-200 text-blue-700'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  } ${diagnosisType === 'LANDMARK' ? 'ring-2 ring-blue-400' : ''}`}
+                  onClick={() => {
+                    if (uploadedFrontalFiles.length === 0) {
+                      setShowFrontalTooltip(true);
+                      setTimeout(() => setShowFrontalTooltip(false), 2500);
+                      return;
+                    }
+                    // TODO: Frontal 분석 페이지로 이동
+                    toast('Frontal 분석 기능은 준비 중입니다.', { icon: '🚧' });
+                  }}
+                  disabled={isProcessing}
+                  className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                    uploadedFrontalFiles.length > 0 && !isProcessing
+                      ? 'bg-orange-100 hover:bg-orange-200 text-orange-700'
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-500'
+                  }`}
                 >
-                  Landmark
+                  Frontal 분석
                 </button>
-                <button
-                  onClick={() => { setDiagnosisType('PSA'); handleStartDiagnosis('PSA'); }}
-                  disabled={uploadedFiles.length === 0 || isProcessing}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
-                    uploadedFiles.length > 0 && !isProcessing
-                      ? 'bg-green-100 hover:bg-green-200 text-green-700'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  } ${diagnosisType === 'PSA' ? 'ring-2 ring-green-400' : ''}`}
-                >
-                  PSA
-                </button>
-                <button
-                  onClick={() => { setDiagnosisType('PSO'); handleStartDiagnosis('PSO'); }}
-                  disabled={uploadedFiles.length === 0 || isProcessing}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
-                    uploadedFiles.length > 0 && !isProcessing
-                      ? 'bg-purple-100 hover:bg-purple-200 text-purple-700'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  } ${diagnosisType === 'PSO' ? 'ring-2 ring-purple-400' : ''}`}
-                >
-                  PSO
-                </button>
-                {isProcessing && <span className="text-xs text-yellow-600">진단 중...</span>}
+                {isProcessing && <span className="text-sm text-yellow-600 font-medium">진단 중...</span>}
+
+                {/* 업로드 안내 툴팁 */}
+                {showFrontalTooltip && (
+                  <div className="absolute left-0 -top-10 bg-red-500 text-white text-xs px-3 py-2 rounded shadow-lg whitespace-nowrap z-50 animate-pulse">
+                    ⬆️ Frontal Ceph 이미지를 먼저 업로드해주세요
+                    <div className="absolute left-4 top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-red-500"></div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
