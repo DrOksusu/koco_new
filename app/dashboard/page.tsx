@@ -1518,21 +1518,27 @@ export default function DashboardPage() {
             </div>
           </div>
 
+        </div>
+      </div>
+
+        {/* 하단: 계측값 대시보드 + 반환 파일 형식 */}
+        <div className="flex-1 overflow-auto bg-white border-t border-gray-200">
+          <MeasurementDashboard initialData={analysisData} />
+
           {/* 반환 파일 형식 선택 및 파일 생성 */}
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <h3 className="text-xs font-semibold text-gray-800 mb-2">반환 파일 형식</h3>
+          <div className="mx-2 mt-2 mb-2 p-3 border rounded-lg bg-gray-50">
+            <h3 className="text-sm font-semibold text-gray-800 mb-2">반환 파일 형식</h3>
             <div className="flex items-center gap-2">
               <select
                 value={outputFormat}
                 onChange={(e) => setOutputFormat(e.target.value as 'pptx' | 'pdf')}
-                className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="pptx">PowerPoint (.pptx)</option>
                 <option value="pdf">PDF (.pdf)</option>
               </select>
               <button
                 onClick={async () => {
-                  // 유효성 검사
                   const checkResult = canGeneratePowerPoint({
                     patientName,
                     patientBirthDate,
@@ -1547,7 +1553,6 @@ export default function DashboardPage() {
                     return;
                   }
 
-                  // 경고사항이 있으면 사용자에게 확인
                   if (checkResult.warnings && checkResult.warnings.length > 0) {
                     const warningMessage = '⚠️ 다음 항목이 누락되었습니다:\n\n' +
                       checkResult.warnings.map(w => `• ${w}`).join('\n') +
@@ -1612,12 +1617,6 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-
-        {/* 하단: 계측값 대시보드 컨테이너 */}
-        <div className="flex-1 overflow-auto bg-white border-t border-gray-200">
-          <MeasurementDashboard initialData={analysisData} />
         </div>
       </div>
     </div>
