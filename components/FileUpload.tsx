@@ -7,6 +7,8 @@ interface FileUploadProps {
   hasFiles?: boolean;
   maxSize?: number; // MB 단위
   acceptedTypes?: string[];
+  placeholderImage?: string; // 플레이스홀더 이미지 경로
+  label?: string; // 업로드 라벨
 }
 
 export default function FileUpload({
@@ -26,7 +28,9 @@ export default function FileUpload({
     '.jpeg',
     '.dicom',
     '.dcm'
-  ]
+  ],
+  placeholderImage,
+  label = 'Lateral Cephalometric X-ray 이미지'
 }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -138,17 +142,14 @@ export default function FileUpload({
       >
         {/* 배경 이미지 레이어 - 연하게 표시 */}
         {!hasFiles && (
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `url(${basePath}/images/placeholders/sample_lateral.jpg)`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              opacity: 0.45, // 45% 투명도로 적당히 선명하게 표시
-              zIndex: 0
-            }}
-          />
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center" style={{ zIndex: 0 }}>
+            <img
+              src={placeholderImage || `${basePath}/images/placeholders/sample_lateral.jpg`}
+              alt="placeholder"
+              className="max-w-full max-h-full object-contain"
+              style={{ opacity: 0.45 }}
+            />
+          </div>
         )}
         <input
           ref={fileInputRef}
@@ -181,7 +182,7 @@ export default function FileUpload({
           </p>
 
           <p className="mt-1 text-xs text-gray-500">
-            Lateral Cephalometric X-ray 이미지
+            {label}
           </p>
           <p className="mt-0.5 text-xs text-gray-400">
             지원 형식: DICOM, JPG, PNG, PDF

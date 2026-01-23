@@ -115,6 +115,9 @@ export default function DashboardPage() {
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  // Frontal Ceph 관련 상태
+  const [uploadedFrontalFiles, setUploadedFrontalFiles] = useState<File[]>([]);
+  const [frontalPreviewUrls, setFrontalPreviewUrls] = useState<string[]>([]);
   const [diagnosisType, setDiagnosisType] = useState<'LANDMARK' | 'PSA' | 'PSO'>('LANDMARK');
   const [isProcessing, setIsProcessing] = useState(false);
   const [analysisData, setAnalysisData] = useState<any>(null);
@@ -493,6 +496,22 @@ export default function DashboardPage() {
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Frontal Ceph 핸들러
+  const handleFrontalFilesUploaded = (files: File[]) => {
+    setUploadedFrontalFiles(prev => [...prev, ...files]);
+    // 미리보기 URL 생성
+    const urls = files.map(file => URL.createObjectURL(file));
+    setFrontalPreviewUrls(prev => [...prev, ...urls]);
+  };
+
+  const handleRemoveFrontalFile = (index: number) => {
+    if (frontalPreviewUrls[index] && !frontalPreviewUrls[index].startsWith('http')) {
+      URL.revokeObjectURL(frontalPreviewUrls[index]);
+    }
+    setUploadedFrontalFiles(prev => prev.filter((_, i) => i !== index));
+    setFrontalPreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleStartDiagnosis = async (type: 'LANDMARK' | 'PSA' | 'PSO') => {
     if (uploadedFiles.length === 0) {
       alert('파일을 먼저 업로드해주세요.');
@@ -863,6 +882,8 @@ export default function DashboardPage() {
                   // 상태 초기화
                   setUploadedFiles([]);
                   setPreviewUrls([]);
+                  setUploadedFrontalFiles([]);
+                  setFrontalPreviewUrls([]);
                   setPatientName('');
                   setPatientBirthDate('');
                   setAnalysisData(null);
@@ -1035,118 +1056,111 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Lateral_Ceph 업로드 컨테이너 */}
+            {/* 이미지 업로드 컨테이너 */}
             <div className="flex-1 overflow-auto p-2">
-              <div className="mb-2">
-                <h1 className="text-sm font-bold text-gray-900">이미지 업로드</h1>
-                <p className="text-xs text-gray-600">분석할 Lateral Ceph 이미지를 업로드해주세요.</p>
-              </div>
+              <h1 className="text-sm font-bold text-gray-900 mb-2">이미지 업로드</h1>
 
-              <div className="flex gap-2">
-                {/* 이미지 업로드 영역 */}
-                <div className="flex-1">
+              {/* Lateral & Frontal Ceph 업로드 - 나란히 배치 */}
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                {/* Lateral Ceph */}
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Lateral Ceph</p>
                   {uploadedFiles.length === 0 ? (
-                    <div style={{ aspectRatio: '1706/1373' }} className="w-full">
+                    <div className="h-32">
                       <FileUpload onFilesUploaded={handleFilesUploaded} hasFiles={false} />
                     </div>
                   ) : (
-                    <div style={{ aspectRatio: '1706/1373' }} className="w-full relative bg-gray-100 rounded overflow-hidden">
+                    <div className="h-32 relative bg-gray-100 rounded overflow-hidden">
                       {previewUrls[0] ? (
-                        <S3Image src={previewUrls[0]} alt="Lateral Ceph Preview" className="w-full h-full object-contain" />
+                        <S3Image src={previewUrls[0]} alt="Lateral Ceph" className="w-full h-full object-contain" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-500">
-                          <span>이미지 로딩 중...</span>
-                        </div>
+                        <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">로딩 중...</div>
                       )}
                       <div className="absolute top-1 right-1 flex gap-1">
-                        <button onClick={() => handleRemoveFile(0)} className="bg-red-500 hover:bg-red-600 text-white p-1 rounded shadow transition-colors" title="이미지 삭제">
+                        <button onClick={() => handleRemoveFile(0)} className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded" title="삭제">
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                        <button onClick={() => handleRemoveFile(0)} className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded shadow transition-colors" title="다른 이미지 선택">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
                       </div>
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
-                        <p className="text-white text-xs font-medium">{uploadedFiles[0].name}</p>
-                        <p className="text-white/80 text-xs">{(uploadedFiles[0].size / 1024 / 1024).toFixed(2)} MB</p>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
+                        <p className="text-white text-xs truncate">{uploadedFiles[0].name}</p>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* 진단 유형 버튼 */}
-                <div className="w-24">
-                  <h2 className="text-xs font-semibold mb-1 text-gray-800">진단 유형</h2>
-                  <div className="space-y-1">
-                    <button
-                      onClick={() => {
-                        setDiagnosisType('LANDMARK');
-                        handleStartDiagnosis('LANDMARK');
-                      }}
-                      disabled={uploadedFiles.length === 0 || isProcessing}
-                      className={`w-full flex items-center p-1 border rounded cursor-pointer text-xs transition-colors ${
-                        uploadedFiles.length > 0 && !isProcessing
-                          ? 'hover:bg-blue-50 border-gray-300'
-                          : 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50'
-                      } ${diagnosisType === 'LANDMARK' ? 'bg-blue-50 border-blue-400' : ''}`}
-                    >
-                      <div className="text-left">
-                        <p className="font-medium">랜드마크 설정</p>
-                        <p className="text-xs text-gray-500">
-                          Cephalometric Landmark Detection
-                        </p>
+                {/* Frontal Ceph */}
+                <div>
+                  <p className="text-xs text-gray-600 mb-1">Frontal Ceph</p>
+                  {uploadedFrontalFiles.length === 0 ? (
+                    <div className="h-32">
+                      <FileUpload
+                        onFilesUploaded={handleFrontalFilesUploaded}
+                        hasFiles={false}
+                        placeholderImage={`${basePath}/images/placeholders/sample_frontal.jpg`}
+                        label="Frontal Ceph"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-32 relative bg-gray-100 rounded overflow-hidden">
+                      {frontalPreviewUrls[0] ? (
+                        <S3Image src={frontalPreviewUrls[0]} alt="Frontal Ceph" className="w-full h-full object-contain" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">로딩 중...</div>
+                      )}
+                      <div className="absolute top-1 right-1 flex gap-1">
+                        <button onClick={() => handleRemoveFrontalFile(0)} className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded" title="삭제">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setDiagnosisType('PSA');
-                        handleStartDiagnosis('PSA');
-                      }}
-                      disabled={uploadedFiles.length === 0 || isProcessing}
-                      className={`w-full flex items-center p-1 border rounded cursor-pointer text-xs transition-colors ${
-                        uploadedFiles.length > 0 && !isProcessing
-                          ? 'hover:bg-blue-50 border-gray-300'
-                          : 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50'
-                      } ${diagnosisType === 'PSA' ? 'bg-blue-50 border-blue-400' : ''}`}
-                    >
-                      <div className="text-left">
-                        <p className="font-medium">PSA 분석</p>
-                        <p className="text-xs text-gray-500">
-                          Park's Schematic Analysis
-                        </p>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
+                        <p className="text-white text-xs truncate">{uploadedFrontalFiles[0].name}</p>
                       </div>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setDiagnosisType('PSO');
-                        handleStartDiagnosis('PSO');
-                      }}
-                      disabled={uploadedFiles.length === 0 || isProcessing}
-                      className={`w-full flex items-center p-1 border rounded cursor-pointer text-xs transition-colors ${
-                        uploadedFiles.length > 0 && !isProcessing
-                          ? 'hover:bg-blue-50 border-gray-300'
-                          : 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50'
-                      } ${diagnosisType === 'PSO' ? 'bg-blue-50 border-blue-400' : ''}`}
-                    >
-                      <div className="text-left">
-                        <p className="font-medium">PSO 분석</p>
-                        <p className="text-xs text-gray-500">
-                          Park's Schematic Occlusion
-                        </p>
-                      </div>
-                    </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                {isProcessing && (
-                  <div className="mt-1 p-1 bg-yellow-50 border border-yellow-200 rounded text-center">
-                    <span className="text-xs text-yellow-800">진단 중...</span>
-                  </div>
-                )}
+              {/* 진단 유형 버튼 - 가로 배치 */}
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+                <span className="text-xs text-gray-600">진단:</span>
+                <button
+                  onClick={() => { setDiagnosisType('LANDMARK'); handleStartDiagnosis('LANDMARK'); }}
+                  disabled={uploadedFiles.length === 0 || isProcessing}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    uploadedFiles.length > 0 && !isProcessing
+                      ? 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  } ${diagnosisType === 'LANDMARK' ? 'ring-2 ring-blue-400' : ''}`}
+                >
+                  랜드마크
+                </button>
+                <button
+                  onClick={() => { setDiagnosisType('PSA'); handleStartDiagnosis('PSA'); }}
+                  disabled={uploadedFiles.length === 0 || isProcessing}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    uploadedFiles.length > 0 && !isProcessing
+                      ? 'bg-green-100 hover:bg-green-200 text-green-700'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  } ${diagnosisType === 'PSA' ? 'ring-2 ring-green-400' : ''}`}
+                >
+                  PSA
+                </button>
+                <button
+                  onClick={() => { setDiagnosisType('PSO'); handleStartDiagnosis('PSO'); }}
+                  disabled={uploadedFiles.length === 0 || isProcessing}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${
+                    uploadedFiles.length > 0 && !isProcessing
+                      ? 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  } ${diagnosisType === 'PSO' ? 'ring-2 ring-purple-400' : ''}`}
+                >
+                  PSO
+                </button>
+                {isProcessing && <span className="text-xs text-yellow-600">진단 중...</span>}
               </div>
             </div>
           </div>
