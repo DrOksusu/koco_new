@@ -142,14 +142,17 @@ export default function FileUpload({
       >
         {/* 배경 이미지 레이어 - 연하게 표시 */}
         {!hasFiles && (
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center" style={{ zIndex: 0 }}>
-            <img
-              src={placeholderImage || `${basePath}/images/placeholders/sample_lateral.jpg`}
-              alt="placeholder"
-              className="max-w-full max-h-full object-contain"
-              style={{ opacity: 0.45 }}
-            />
-          </div>
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${placeholderImage || `${basePath}/images/placeholders/sample_lateral.jpg`})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              opacity: 0.45,
+              zIndex: 0
+            }}
+          />
         )}
         <input
           ref={fileInputRef}

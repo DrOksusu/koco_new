@@ -599,13 +599,20 @@ export default function DashboardPage() {
               alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
             }
           } else {
-            const errorData = await uploadResponse.json().catch(() => ({}));
+            const errorText = await uploadResponse.text().catch(() => '');
+            let errorData: any = {};
+            try {
+              errorData = JSON.parse(errorText);
+            } catch {
+              errorData = { rawText: errorText };
+            }
             console.error('Failed to upload Landmark file to S3:', {
               status: uploadResponse.status,
               statusText: uploadResponse.statusText,
-              error: errorData
+              error: errorData,
+              rawText: errorText
             });
-            alert(`파일 업로드에 실패했습니다.\n상태: ${uploadResponse.status}\n${errorData.error || errorData.message || '알 수 없는 오류'}`);
+            alert(`파일 업로드에 실패했습니다.\n상태: ${uploadResponse.status} ${uploadResponse.statusText}\n${errorData.error || errorData.message || errorText || '알 수 없는 오류'}`);
           }
         } catch (error) {
           console.error('Error uploading Landmark file:', error);
@@ -1058,74 +1065,77 @@ export default function DashboardPage() {
 
             {/* 이미지 업로드 컨테이너 */}
             <div className="flex-1 overflow-auto p-2">
-              <h1 className="text-sm font-bold text-gray-900 mb-2">이미지 업로드</h1>
-
-              {/* Lateral & Frontal Ceph 업로드 - 나란히 배치 */}
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                {/* Lateral Ceph */}
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Lateral Ceph</p>
-                  {uploadedFiles.length === 0 ? (
-                    <div className="h-32">
-                      <FileUpload onFilesUploaded={handleFilesUploaded} hasFiles={false} />
-                    </div>
-                  ) : (
-                    <div className="h-32 relative bg-gray-100 rounded overflow-hidden">
-                      {previewUrls[0] ? (
-                        <S3Image src={previewUrls[0]} alt="Lateral Ceph" className="w-full h-full object-contain" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">로딩 중...</div>
-                      )}
-                      <div className="absolute top-1 right-1 flex gap-1">
-                        <button onClick={() => handleRemoveFile(0)} className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded" title="삭제">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
-                        <p className="text-white text-xs truncate">{uploadedFiles[0].name}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Frontal Ceph */}
-                <div>
-                  <p className="text-xs text-gray-600 mb-1">Frontal Ceph</p>
-                  {uploadedFrontalFiles.length === 0 ? (
-                    <div className="h-32">
-                      <FileUpload
-                        onFilesUploaded={handleFrontalFilesUploaded}
-                        hasFiles={false}
-                        placeholderImage={`${basePath}/images/placeholders/sample_frontal.jpg`}
-                        label="Frontal Ceph"
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-32 relative bg-gray-100 rounded overflow-hidden">
-                      {frontalPreviewUrls[0] ? (
-                        <S3Image src={frontalPreviewUrls[0]} alt="Frontal Ceph" className="w-full h-full object-contain" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">로딩 중...</div>
-                      )}
-                      <div className="absolute top-1 right-1 flex gap-1">
-                        <button onClick={() => handleRemoveFrontalFile(0)} className="bg-red-500 hover:bg-red-600 text-white p-0.5 rounded" title="삭제">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
-                        <p className="text-white text-xs truncate">{uploadedFrontalFiles[0].name}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+              <div className="mb-2">
+                <h1 className="text-sm font-bold text-gray-900">이미지 업로드</h1>
               </div>
 
-              {/* 진단 유형 버튼 - 가로 배치 */}
-              <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+              {/* Lateral Ceph 업로드 영역 */}
+              <div className="mb-2">
+                <p className="text-xs text-gray-600 mb-1">Lateral Ceph</p>
+                {uploadedFiles.length === 0 ? (
+                  <div style={{ aspectRatio: '1706/1373' }} className="w-full">
+                    <FileUpload onFilesUploaded={handleFilesUploaded} hasFiles={false} />
+                  </div>
+                ) : (
+                  <div style={{ aspectRatio: '1706/1373' }} className="w-full relative bg-gray-100 rounded overflow-hidden">
+                    {previewUrls[0] ? (
+                      <S3Image src={previewUrls[0]} alt="Lateral Ceph Preview" className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-500">
+                        <span>이미지 로딩 중...</span>
+                      </div>
+                    )}
+                    <div className="absolute top-1 right-1 flex gap-1">
+                      <button onClick={() => handleRemoveFile(0)} className="bg-red-500 hover:bg-red-600 text-white p-1 rounded shadow transition-colors" title="이미지 삭제">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                      <p className="text-white text-xs font-medium truncate">{uploadedFiles[0].name}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Frontal Ceph 업로드 영역 */}
+              <div className="mb-2">
+                <p className="text-xs text-gray-600 mb-1">Frontal Ceph</p>
+                {uploadedFrontalFiles.length === 0 ? (
+                  <div style={{ aspectRatio: '1706/1373' }} className="w-full">
+                    <FileUpload
+                      onFilesUploaded={handleFrontalFilesUploaded}
+                      hasFiles={false}
+                      placeholderImage={`${basePath}/images/placeholders/sample_frontal.jpg`}
+                      label="Frontal Cephalometric X-ray 이미지"
+                    />
+                  </div>
+                ) : (
+                  <div style={{ aspectRatio: '1706/1373' }} className="w-full relative bg-gray-100 rounded overflow-hidden">
+                    {frontalPreviewUrls[0] ? (
+                      <S3Image src={frontalPreviewUrls[0]} alt="Frontal Ceph Preview" className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-500">
+                        <span>이미지 로딩 중...</span>
+                      </div>
+                    )}
+                    <div className="absolute top-1 right-1 flex gap-1">
+                      <button onClick={() => handleRemoveFrontalFile(0)} className="bg-red-500 hover:bg-red-600 text-white p-1 rounded shadow transition-colors" title="이미지 삭제">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                      <p className="text-white text-xs font-medium truncate">{uploadedFrontalFiles[0].name}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 진단 유형 버튼 - 간소화 */}
+              <div className="flex items-center gap-2 mt-2">
                 <span className="text-xs text-gray-600">진단:</span>
                 <button
                   onClick={() => { setDiagnosisType('LANDMARK'); handleStartDiagnosis('LANDMARK'); }}
@@ -1136,7 +1146,7 @@ export default function DashboardPage() {
                       : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                   } ${diagnosisType === 'LANDMARK' ? 'ring-2 ring-blue-400' : ''}`}
                 >
-                  랜드마크
+                  Landmark
                 </button>
                 <button
                   onClick={() => { setDiagnosisType('PSA'); handleStartDiagnosis('PSA'); }}
