@@ -991,163 +991,96 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* 환자 정보 컨테이너 - 독립적 */}
-      <div className="absolute top-16 left-0 w-1/4 h-[140px] bg-white shadow-lg border border-gray-200 overflow-auto z-10">
-        <div className="px-3 py-2">
-          <div className="mb-2 flex justify-between items-center">
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">환자 정보 입력</h1>
-              <p className="text-xs text-gray-600">
-                진단을 시작하기 전에 환자 정보를 입력해주세요.
-              </p>
-            </div>
-            {/* 자동 저장 표시 */}
-            {isSaving && (
-              <div className="flex items-center text-xs text-blue-600">
-                <svg className="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                저장중...
-              </div>
-            )}
-            {!isSaving && analysisData?.analysisId && (
-              <div className="text-xs text-green-600">✓ 자동저장</div>
-            )}
-          </div>
-
-          {/* 환자 정보 입력 폼 */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  환자 이름 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={patientName}
-                  onChange={(e) => setPatientName(e.target.value)}
-                  placeholder="홍길동"
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  생년월일 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={patientBirthDate}
-                  onChange={(e) => setPatientBirthDate(e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  진단월일
-                </label>
-                <input
-                  type="date"
-                  value={diagnosisDate}
-                  onChange={(e) => setDiagnosisDate(e.target.value)}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Lateral_Ceph 업로드 컨테이너 - 독립적 */}
-      <div className="absolute top-[210px] left-0 w-1/4 h-[calc(100vh-210px)] overflow-auto bg-white shadow-lg border border-gray-200">
-        <main className="px-2 py-2">
-          <div className="mb-2">
-            <h1 className="text-lg font-bold text-gray-900">이미지 업로드</h1>
-            <p className="text-xs text-gray-600">
-              분석할 Lateral Ceph 이미지를 업로드해주세요.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-            {/* 왼쪽: Lateral_Ceph 업로드 영역 */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded shadow-sm p-2">
-                <h2 className="text-sm font-semibold mb-1 text-gray-800">
-                  Lateral_Ceph 업로드
-                </h2>
-
-                {/* 파일 업로드 또는 미리보기 */}
-                {uploadedFiles.length === 0 ? (
-                  <div style={{ aspectRatio: '1706/1373' }} className="w-full">
-                    <FileUpload
-                      onFilesUploaded={handleFilesUploaded}
-                      hasFiles={false}
-                    />
-                  </div>
-                ) : (
-                  <div style={{ aspectRatio: '1706/1373' }} className="w-full relative bg-gray-100 rounded overflow-hidden">
-                  {/* 이미지 미리보기 */}
-                  {previewUrls[0] ? (
-                    <S3Image
-                      src={previewUrls[0]}
-                      alt="Lateral Ceph Preview"
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-500">
-                      <span>이미지 로딩 중...</span>
-                    </div>
-                  )}
-
-                    {/* 이미지 위 컨트롤 버튼 */}
-                    <div className="absolute top-1 right-1 flex gap-1">
-                      <button
-                        onClick={() => handleRemoveFile(0)}
-                        className="bg-red-500 hover:bg-red-600 text-white p-1 rounded shadow transition-colors"
-                        title="이미지 삭제"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                      <button
-                        onClick={() => {
-                          handleRemoveFile(0);
-                        }}
-                        className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded shadow transition-colors"
-                        title="다른 이미지 선택"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </button>
-                  </div>
-
-                    {/* 파일 정보 오버레이 */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
-                      <p className="text-white text-xs font-medium">{uploadedFiles[0].name}</p>
-                      <p className="text-white/80 text-xs">
-                        {(uploadedFiles[0].size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
+      {/* 메인 컨텐츠 영역 */}
+      <div className="flex flex-col h-[calc(100vh-4rem)]">
+        {/* 상단 영역: 환자 정보 + 이미지 업로드 + 진단 완료 자료 */}
+        <div className="flex border-b border-gray-200" style={{ height: '45%', minHeight: '300px' }}>
+          {/* 왼쪽: 환자 정보 + 이미지 업로드 */}
+          <div className="w-1/4 flex flex-col border-r border-gray-200 bg-white">
+            {/* 환자 정보 컨테이너 */}
+            <div className="border-b border-gray-200 px-3 py-2">
+              <div className="mb-2 flex justify-between items-center">
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">환자 정보 입력</h1>
+                  <p className="text-xs text-gray-600">진단을 시작하기 전에 환자 정보를 입력해주세요.</p>
+                </div>
+                {isSaving && (
+                  <div className="flex items-center text-xs text-blue-600">
+                    <svg className="animate-spin h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    저장중...
                   </div>
                 )}
-
+                {!isSaving && analysisData?.analysisId && (
+                  <div className="text-xs text-green-600">✓ 자동저장</div>
+                )}
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">환자 이름 <span className="text-red-500">*</span></label>
+                    <input type="text" value={patientName} onChange={(e) => setPatientName(e.target.value)} placeholder="홍길동" className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">생년월일 <span className="text-red-500">*</span></label>
+                    <input type="date" value={patientBirthDate} onChange={(e) => setPatientBirthDate(e.target.value)} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">진단월일</label>
+                    <input type="date" value={diagnosisDate} onChange={(e) => setDiagnosisDate(e.target.value)} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* 오른쪽: 진단 설정 */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded shadow-sm p-2">
-                <h2 className="text-sm font-semibold mb-1 text-gray-800">
-                  진단 유형
-                </h2>
+            {/* Lateral_Ceph 업로드 컨테이너 */}
+            <div className="flex-1 overflow-auto p-2">
+              <div className="mb-2">
+                <h1 className="text-sm font-bold text-gray-900">이미지 업로드</h1>
+                <p className="text-xs text-gray-600">분석할 Lateral Ceph 이미지를 업로드해주세요.</p>
+              </div>
 
-                {/* 진단 유형 선택 */}
-                <div className="mb-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    진단 유형 선택
-                  </label>
+              <div className="flex gap-2">
+                {/* 이미지 업로드 영역 */}
+                <div className="flex-1">
+                  {uploadedFiles.length === 0 ? (
+                    <div style={{ aspectRatio: '1706/1373' }} className="w-full">
+                      <FileUpload onFilesUploaded={handleFilesUploaded} hasFiles={false} />
+                    </div>
+                  ) : (
+                    <div style={{ aspectRatio: '1706/1373' }} className="w-full relative bg-gray-100 rounded overflow-hidden">
+                      {previewUrls[0] ? (
+                        <S3Image src={previewUrls[0]} alt="Lateral Ceph Preview" className="w-full h-full object-contain" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-500">
+                          <span>이미지 로딩 중...</span>
+                        </div>
+                      )}
+                      <div className="absolute top-1 right-1 flex gap-1">
+                        <button onClick={() => handleRemoveFile(0)} className="bg-red-500 hover:bg-red-600 text-white p-1 rounded shadow transition-colors" title="이미지 삭제">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                        <button onClick={() => handleRemoveFile(0)} className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded shadow transition-colors" title="다른 이미지 선택">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                        <p className="text-white text-xs font-medium">{uploadedFiles[0].name}</p>
+                        <p className="text-white/80 text-xs">{(uploadedFiles[0].size / 1024 / 1024).toFixed(2)} MB</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 진단 유형 버튼 */}
+                <div className="w-24">
+                  <h2 className="text-xs font-semibold mb-1 text-gray-800">진단 유형</h2>
                   <div className="space-y-1">
                     <button
                       onClick={() => {
@@ -1209,114 +1142,45 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* 처리 중 메시지 */}
                 {isProcessing && (
-                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                    <span className="flex items-center justify-center text-xs text-yellow-800">
-                      <svg
-                        className="animate-spin h-3 w-3 mr-1"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      진단 중...
-                    </span>
+                  <div className="mt-1 p-1 bg-yellow-50 border border-yellow-200 rounded text-center">
+                    <span className="text-xs text-yellow-800">진단 중...</span>
                   </div>
                 )}
-
-                {/* 안내 메시지 - Hover로 표시 */}
-                <div className="mt-2 relative group">
-                  <div className="flex items-center text-xs text-gray-600 cursor-help">
-                    <svg className="w-4 h-4 mr-1 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-blue-600 font-medium">지원 파일 형식</span>
-                  </div>
-                  {/* Tooltip */}
-                  <div className="invisible group-hover:visible absolute left-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg">
-                    <div className="font-semibold mb-2">지원 파일 형식</div>
-                    <ul className="space-y-1">
-                      <li>• PDF, Word, Excel</li>
-                      <li>• CSV, TXT</li>
-                      <li>• 이미지 (PNG, JPG, JPEG)</li>
-                      <li>• 최대 파일 크기: 50MB</li>
-                    </ul>
-                    {/* 화살표 */}
-                    <div className="absolute -top-2 left-4 w-0 h-0 border-l-8 border-r-8 border-b-8 border-transparent border-b-gray-900"></div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
-        </main>
-      </div>
 
-      {/* 중앙: 진단 완료 파일 미리보기 */}
-      <div className="absolute top-16 left-1/4 w-1/4 h-auto bg-white shadow-lg border border-gray-200">
-        <div className="p-2">
-          <h2 className="text-xs font-semibold text-gray-800 mb-2">진단 완료 자료</h2>
-          <div className="flex gap-2">
-            {/* 원본 이미지 */}
-            <div className="flex-1">
-              <h3 className="text-xs font-medium text-gray-700 mb-1">Lateral_ceph</h3>
-              <div
-                className="relative border border-gray-300 rounded overflow-hidden bg-gray-50"
-                style={{ aspectRatio: '1706/1373', height: 'auto' }}
-              >
-                {originalResultImage ? (
-                  <S3Image
-                    src={originalResultImage}
-                    alt="Original Image"
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <img
-                    src={`${basePath}/images/placeholders/sample_lateral.jpg`}
-                    alt="Sample Lateral Ceph"
-                    className="w-full h-full object-contain opacity-40"
-                  />
-                )}
+          {/* 오른쪽: 진단 완료 파일 미리보기 */}
+          <div className="flex-1 bg-white overflow-auto p-2">
+            <h2 className="text-xs font-semibold text-gray-800 mb-2">진단 완료 자료</h2>
+            <div className="flex gap-2">
+              {/* 원본 이미지 */}
+              <div className="flex-1">
+                <h3 className="text-xs font-medium text-gray-700 mb-1">Lateral_ceph</h3>
+                <div className="relative border border-gray-300 rounded overflow-hidden bg-gray-50" style={{ aspectRatio: '1706/1373', height: 'auto' }}>
+                  {originalResultImage ? (
+                    <S3Image src={originalResultImage} alt="Original Image" className="w-full h-full object-contain" />
+                  ) : (
+                    <img src={`${basePath}/images/placeholders/sample_lateral.jpg`} alt="Sample Lateral Ceph" className="w-full h-full object-contain opacity-40" />
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Landmark 분석 결과 */}
-            <div className="flex-1">
-              <h3 className="text-xs font-medium text-gray-700 mb-1">
-                Landmark
-                <span className="ml-2 text-xs text-blue-600">
-                  {uploadedLandmarkResult ? '(더블클릭하여 수정)' : '(비었음)'}
-                </span>
-              </h3>
-              <div
-                className="relative border border-gray-300 rounded overflow-hidden bg-gray-50"
-                style={{ aspectRatio: '1706/1373', height: 'auto' }}
-              >
-                {uploadedLandmarkResult ? (
-                  <S3Image
-                    src={uploadedLandmarkResult}
-                    alt="Landmark Result"
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <img
-                    src={`${basePath}/images/placeholders/sample_lateral.jpg`}
-                    alt="Sample Landmark"
-                    className="w-full h-full object-contain opacity-40"
-                  />
-                )}
+              {/* Landmark 분석 결과 */}
+              <div className="flex-1">
+                <h3 className="text-xs font-medium text-gray-700 mb-1">
+                  Landmark
+                  <span className="ml-2 text-xs text-blue-600">
+                    {uploadedLandmarkResult ? '(더블클릭하여 수정)' : '(비었음)'}
+                  </span>
+                </h3>
+                <div className="relative border border-gray-300 rounded overflow-hidden bg-gray-50" style={{ aspectRatio: '1706/1373', height: 'auto' }}>
+                  {uploadedLandmarkResult ? (
+                    <S3Image src={uploadedLandmarkResult} alt="Landmark Result" className="w-full h-full object-contain" />
+                  ) : (
+                    <img src={`${basePath}/images/placeholders/sample_lateral.jpg`} alt="Sample Landmark" className="w-full h-full object-contain opacity-40" />
+                  )}
 
                 {/* 수정 버튼 오버레이 */}
                 {uploadedLandmarkResult && (
@@ -1751,9 +1615,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 오른쪽: 계측값 대시보드 컨테이너 */}
-      <div className="absolute top-16 right-0 w-1/2 h-[calc(100vh-4rem)] overflow-auto bg-white shadow-lg border border-gray-200">
-        <MeasurementDashboard initialData={analysisData} />
+        {/* 하단: 계측값 대시보드 컨테이너 */}
+        <div className="flex-1 overflow-auto bg-white border-t border-gray-200">
+          <MeasurementDashboard initialData={analysisData} />
+        </div>
       </div>
     </div>
   );
