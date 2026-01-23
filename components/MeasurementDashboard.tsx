@@ -97,10 +97,10 @@ export default function MeasurementDashboard({ initialData }: MeasurementDashboa
           )}
         </div>
 
-        {/* Main Content */}
-        <div className="space-y-4">
+        {/* Main Content - 좌우 배치 */}
+        <div className="flex gap-4">
           {/* Measurement Table Section */}
-          <div className="border rounded-lg p-3">
+          <div className="flex-1 border rounded-lg p-3">
             <h3 className="text-sm font-semibold text-gray-800 mb-2">
               계측값 테이블
             </h3>
@@ -116,7 +116,7 @@ export default function MeasurementDashboard({ initialData }: MeasurementDashboa
           </div>
 
           {/* Diagnosis Table Section */}
-          <div className="border rounded-lg p-3">
+          <div className="flex-1 border rounded-lg p-3">
             <h3 className="text-sm font-semibold text-gray-800 mb-2">
               진단 지표
             </h3>
@@ -125,7 +125,6 @@ export default function MeasurementDashboard({ initialData }: MeasurementDashboa
                 ? '진단 지표가 계산되었습니다'
                 : '계측값 분석 후 진단 지표가 표시됩니다'}
             </div>
-            {console.log('🔍 About to render DiagnosisTable')}
             <DiagnosisTable />
           </div>
         </div>
