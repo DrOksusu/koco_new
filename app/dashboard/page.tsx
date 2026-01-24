@@ -435,6 +435,11 @@ export default function DashboardPage() {
         processImageUrl(data.frontalImageUrl).then(signedUrl => {
           setFrontalResultImage(signedUrl);
           setUploadedFrontalResult(signedUrl);
+          // 업로드 섹션에도 Frontal 이미지 표시
+          setFrontalPreviewUrls([signedUrl]);
+          const fakeFrontalFile = new File([], 'frontal_ceph.jpg', { type: 'image/jpeg' });
+          Object.defineProperty(fakeFrontalFile, 'isFromHistory', { value: true, writable: false, enumerable: true });
+          setUploadedFrontalFiles([fakeFrontalFile]);
           console.log('✅ Frontal image URL set:', signedUrl);
         });
       }
