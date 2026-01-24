@@ -151,8 +151,16 @@ jobs:
               exit 1
             fi
 
+            # Prisma DB 스키마 동기화 (컨테이너 내부에서 실행)
+            echo "Step 8: Syncing Prisma schema with database..."
+            if docker exec koco_new npx prisma db push --skip-generate 2>&1; then
+              echo "✓ Prisma schema synced successfully"
+            else
+              echo "⚠ Prisma schema sync warning (may be okay if schema is already up to date)"
+            fi
+
             # 사용하지 않는 이미지 정리
-            echo "Step 8: Cleaning up old images..."
+            echo "Step 9: Cleaning up old images..."
             docker image prune -f
             echo "✓ Cleanup complete"
 
