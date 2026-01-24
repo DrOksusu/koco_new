@@ -1694,8 +1694,8 @@ export default function DashboardPage() {
             {/* 진단 준비 완료 섹션 */}
             <h2 className="text-xs font-semibold text-gray-800 mb-2 mt-4">진단 준비 완료</h2>
             <div className="flex gap-2">
-              {/* Lateral_ceph 원본 이미지 */}
-              <div className="flex-1">
+              {/* Lateral_ceph 원본 이미지 - 다른 박스와 동일한 크기 (1/4) */}
+              <div style={{ flex: '1 1 0', maxWidth: 'calc(25% - 6px)' }}>
                 <h3 className="text-xs font-medium text-gray-700 mb-1">Lateral_ceph</h3>
                 <div className="relative border border-gray-300 rounded overflow-hidden bg-gray-50" style={{ aspectRatio: '1706/1373', height: 'auto' }}>
                   {originalResultImage ? (
