@@ -430,17 +430,24 @@ export default function DashboardPage() {
         });
       }
 
-      // Frontal 이미지 설정 (S3 URL이면 서명된 URL로 변환)
+      // Frontal 분석결과 이미지 설정 (S3 URL이면 서명된 URL로 변환)
       if (data.frontalImageUrl) {
         processImageUrl(data.frontalImageUrl).then(signedUrl => {
           setFrontalResultImage(signedUrl);
           setUploadedFrontalResult(signedUrl);
-          // 업로드 섹션에도 Frontal 이미지 표시
+          console.log('✅ Frontal result image URL set:', signedUrl);
+        });
+      }
+
+      // Frontal 원본 이미지 설정 (업로드 섹션용)
+      if (data.frontalOriginalImageUrl) {
+        processImageUrl(data.frontalOriginalImageUrl).then(signedUrl => {
+          // 업로드 섹션에 Frontal 원본 이미지 표시
           setFrontalPreviewUrls([signedUrl]);
           const fakeFrontalFile = new File([], 'frontal_ceph.jpg', { type: 'image/jpeg' });
           Object.defineProperty(fakeFrontalFile, 'isFromHistory', { value: true, writable: false, enumerable: true });
           setUploadedFrontalFiles([fakeFrontalFile]);
-          console.log('✅ Frontal image URL set:', signedUrl);
+          console.log('✅ Frontal original image URL set:', signedUrl);
         });
       }
 

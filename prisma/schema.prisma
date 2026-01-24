@@ -85,6 +85,7 @@ model XrayAnalysis {
   landmarkImageUrl  String?            @map("landmark_image_url") @db.Text
   psaImageUrl       String?            @map("psa_image_url") @db.Text
   psoImageUrl       String?            @map("pso_image_url") @db.Text
+  frontalOriginalImageUrl String?      @map("frontal_original_image_url") @db.Text
   frontalImageUrl   String?            @map("frontal_image_url") @db.Text
   fileName          String?            @map("file_name") @db.VarChar(255)
   analysisStatus    AnalysisStatus?    @default(in_progress) @map("analysis_status")

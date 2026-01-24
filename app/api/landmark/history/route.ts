@@ -89,7 +89,8 @@ export async function GET(request: NextRequest) {
           landmarkImageUrl: analysis.landmarkImageUrl || '', // Landmark 전용 이미지
           psaImageUrl: analysis.psaImageUrl || '', // PSA 전용 이미지
           psoImageUrl: analysis.psoImageUrl || '', // PSO 전용 이미지
-          frontalImageUrl: analysis.frontalImageUrl || '', // Frontal 전용 이미지
+          frontalOriginalImageUrl: analysis.frontalOriginalImageUrl || '', // Frontal 원본 이미지
+          frontalImageUrl: analysis.frontalImageUrl || '', // Frontal 분석결과 이미지
           fileName: analysis.fileName,
           patientName: analysis.patientName,
           patientBirthDate: analysis.patientBirthDate,
