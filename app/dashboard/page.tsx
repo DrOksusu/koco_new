@@ -1705,6 +1705,18 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+
+              {/* Frontal_ceph 원본 이미지 - 다른 박스와 동일한 크기 (1/4) */}
+              <div style={{ flex: '1 1 0', maxWidth: 'calc(25% - 6px)' }}>
+                <h3 className="text-xs font-medium text-gray-700 mb-1">Frontal_ceph</h3>
+                <div className="relative border border-gray-300 rounded overflow-hidden bg-gray-50" style={{ aspectRatio: '1706/1373', height: 'auto' }}>
+                  {frontalPreviewUrls[0] ? (
+                    <img src={frontalPreviewUrls[0]} alt="Frontal Ceph" className="w-full h-full object-contain" />
+                  ) : (
+                    <img src={`${basePath}/images/placeholders/sample_frontal.jpg`} alt="Sample Frontal Ceph" className="w-full h-full object-contain opacity-40" />
+                  )}
+                </div>
+              </div>
             </div>
 
         </div>
