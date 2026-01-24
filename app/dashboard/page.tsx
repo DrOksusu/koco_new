@@ -131,11 +131,13 @@ export default function DashboardPage() {
   const [landmarkResultImage, setLandmarkResultImage] = useState<string | null>(null);
   const [psaResultImage, setPsaResultImage] = useState<string | null>(null);
   const [psoResultImage, setPsoResultImage] = useState<string | null>(null);
-  // 진단 완료 파일들 (원본, Landmark, PSA, PSO)
+  const [frontalResultImage, setFrontalResultImage] = useState<string | null>(null);
+  // 진단 완료 파일들 (원본, Landmark, PSA, PSO, Frontal)
   const [originalResultImage, setOriginalResultImage] = useState<string | null>(null);
   const [uploadedLandmarkResult, setUploadedLandmarkResult] = useState<string | null>(null);
   const [uploadedPsaResult, setUploadedPsaResult] = useState<string | null>(null);
   const [uploadedPsoResult, setUploadedPsoResult] = useState<string | null>(null);
+  const [uploadedFrontalResult, setUploadedFrontalResult] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [outputFormat, setOutputFormat] = useState<'pptx' | 'pdf'>('pptx');
   const [isGeneratingFile, setIsGeneratingFile] = useState(false);
@@ -270,8 +272,9 @@ export default function DashboardPage() {
 
         // Frontal 분석 완료 이미지 저장
         if (event.data.data.annotatedImageUrl) {
-          // Frontal 결과 이미지를 Frontal preview에 표시
-          setFrontalPreviewUrls([event.data.data.annotatedImageUrl]);
+          // Frontal 결과 이미지를 진단 완료 섹션에 표시
+          setFrontalResultImage(event.data.data.annotatedImageUrl);
+          setUploadedFrontalResult(event.data.data.annotatedImageUrl);
           console.log('✅ Frontal result image set:', event.data.data.annotatedImageUrl);
         }
 
@@ -1620,6 +1623,41 @@ export default function DashboardPage() {
 
                 {/* 완료 표시 오버레이 */}
                 {uploadedPsoResult && (
+                  <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-md pointer-events-none">
+                    ✓ 분석 완료
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Frontal Ax. 분석 결과 */}
+            <div className="flex-1">
+              <h3 className="text-xs font-medium text-gray-700 mb-1">
+                Frontal Ax.
+                <span className="ml-2 text-xs text-blue-600">
+                  {uploadedFrontalResult ? '(완료)' : '(비었음)'}
+                </span>
+              </h3>
+              <div
+                className="relative border border-gray-300 rounded overflow-hidden bg-gray-50"
+                style={{ aspectRatio: '1706/1373', height: 'auto' }}
+              >
+                {uploadedFrontalResult ? (
+                  <S3Image
+                    src={uploadedFrontalResult}
+                    alt="Frontal Ax. Result"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <img
+                    src={`${basePath}/images/placeholders/sample_frontal.jpg`}
+                    alt="Sample Frontal"
+                    className="w-full h-full object-contain opacity-40"
+                  />
+                )}
+
+                {/* 완료 표시 오버레이 */}
+                {uploadedFrontalResult && (
                   <div className="absolute top-1 right-1 bg-green-500 text-white text-xs px-2 py-1 rounded shadow-md pointer-events-none">
                     ✓ 분석 완료
                   </div>
