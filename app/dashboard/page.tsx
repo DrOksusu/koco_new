@@ -953,23 +953,36 @@ export default function DashboardPage() {
                   // Zustand store 초기화
                   clearAll();
 
-                  // localStorage 데이터도 삭제 (혹시 남아있을 수 있음)
+                  // localStorage/sessionStorage 데이터도 삭제
                   localStorage.removeItem('landmarkAnalysisData');
+                  localStorage.removeItem('psaAnalysisData');
+                  localStorage.removeItem('psoAnalysisData');
+                  localStorage.removeItem('frontalAnalysisData');
+                  sessionStorage.removeItem('analysisData');
+                  sessionStorage.removeItem('analysisId');
 
-                  // 상태 초기화
+                  // 모든 상태 초기화
                   setUploadedFiles([]);
                   setPreviewUrls([]);
                   setUploadedFrontalFiles([]);
                   setFrontalPreviewUrls([]);
                   setPatientName('');
                   setPatientBirthDate('');
+                  setDiagnosisDate(new Date().toISOString().split('T')[0]); // 오늘 날짜로 리셋
+                  setChartNumber(null); // 차트번호 초기화
                   setAnalysisData(null);
                   setIsFromHistory(false);
                   setLandmarkResultImage(null);
                   setPsaResultImage(null);
+                  setPsoResultImage(null);
+                  setFrontalResultImage(null);
                   setOriginalResultImage(null);
                   setUploadedLandmarkResult(null);
                   setUploadedPsaResult(null);
+                  setUploadedPsoResult(null);
+                  setUploadedFrontalResult(null);
+
+                  console.log('✅ 새 분석 시작 - 모든 상태 초기화 완료');
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
               >
