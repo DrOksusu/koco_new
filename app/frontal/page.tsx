@@ -428,9 +428,12 @@ export default function FrontalAnalysisPage() {
       landmarksObj[point.name] = { x: point.x, y: point.y };
     });
 
-    // 1. 캔버스 이미지를 S3에 업로드
+    // 1. 캔버스 이미지(분석결과)를 S3에 업로드
     let s3AnnotatedUrl = '';
+    let s3OriginalUrl = imageUrl; // 기본값은 현재 imageUrl
+
     try {
+      // 분석결과 이미지 업로드
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob((b) => {
           if (b) resolve(b);
@@ -451,11 +454,36 @@ export default function FrontalAnalysisPage() {
       if (uploadResponse.ok) {
         const uploadResult = await uploadResponse.json();
         s3AnnotatedUrl = uploadResult.s3Url;
-        console.log('✅ Frontal image uploaded to S3:', s3AnnotatedUrl);
+        console.log('✅ Frontal annotated image uploaded to S3:', s3AnnotatedUrl);
       } else {
         const error = await uploadResponse.text();
         console.error('❌ S3 upload failed:', error);
         throw new Error('S3 업로드 실패: ' + error);
+      }
+
+      // 원본 이미지가 blob URL이면 S3에 업로드
+      if (imageUrl.startsWith('blob:') || imageUrl.startsWith('data:')) {
+        console.log('📤 Uploading Frontal original image to S3...');
+
+        // blob URL을 Blob으로 변환
+        const originalBlob = await fetch(imageUrl).then(r => r.blob());
+        const originalFormData = new FormData();
+        originalFormData.append('file', originalBlob, `frontal_original_${Date.now()}.png`);
+        originalFormData.append('type', 'frontal-original');
+
+        const originalUploadResponse = await fetch(`${basePath}/api/upload/file`, {
+          method: 'POST',
+          body: originalFormData,
+        });
+
+        if (originalUploadResponse.ok) {
+          const originalUploadResult = await originalUploadResponse.json();
+          s3OriginalUrl = originalUploadResult.s3Url;
+          console.log('✅ Frontal original image uploaded to S3:', s3OriginalUrl);
+        } else {
+          console.warn('⚠️ Original image upload failed, using annotated URL');
+          s3OriginalUrl = s3AnnotatedUrl; // 실패 시 분석결과 URL 사용
+        }
       }
     } catch (error) {
       console.error('❌ Error uploading Frontal image:', error);
@@ -473,7 +501,7 @@ export default function FrontalAnalysisPage() {
       landmarks: landmarksObj,
       angles: angles,
       annotatedImageUrl: s3AnnotatedUrl,
-      originalImageUrl: imageUrl,
+      originalImageUrl: s3OriginalUrl, // S3에 업로드된 원본 이미지 URL
       timestamp: new Date().toISOString()
     };
 
