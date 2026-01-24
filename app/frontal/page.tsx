@@ -487,23 +487,39 @@ export default function FrontalAnalysisPage() {
         console.log('✅ Frontal 분석이 DB에 저장되었습니다:', result);
 
         // 4. DB 저장 성공 후 Dashboard로 데이터 전송
+        const resultData = {
+          ...analysisData,
+          analysisId: result.analysisId,
+          analysisCode: result.analysisCode
+        };
+
+        // localStorage에 결과 저장 (백업 - 대시보드에서 읽을 수 있도록)
+        localStorage.setItem('frontalAnalysisResult', JSON.stringify({
+          annotatedImageUrl: s3AnnotatedUrl,
+          timestamp: Date.now()
+        }));
+        console.log('✅ Frontal 결과를 localStorage에 저장:', s3AnnotatedUrl);
+
+        // postMessage로 전송 시도
         if (window.opener && !window.opener.closed) {
           window.opener.postMessage({
             type: 'FRONTAL_ANALYSIS_COMPLETE',
-            data: {
-              ...analysisData,
-              analysisId: result.analysisId,
-              analysisCode: result.analysisCode
-            }
+            data: resultData
           }, '*');
           console.log('✅ Dashboard에 Frontal 완료 메시지 전송');
+        } else {
+          console.log('⚠️ window.opener를 찾을 수 없음, localStorage 사용');
         }
 
-        // 5. BroadcastChannel로 모든 탭에 알림 (분석이력 자동 새로고침)
+        // 5. BroadcastChannel로 모든 탭에 알림 (분석이력 자동 새로고침 + Frontal 결과)
         const channel = new BroadcastChannel('analysis_updates');
-        channel.postMessage({ type: 'ANALYSIS_SAVED', analysisType: 'FRONTAL' });
+        channel.postMessage({
+          type: 'FRONTAL_ANALYSIS_COMPLETE',
+          analysisType: 'FRONTAL',
+          annotatedImageUrl: s3AnnotatedUrl
+        });
         channel.close();
-        console.log('✅ BroadcastChannel: 모든 탭에 Frontal 저장 알림');
+        console.log('✅ BroadcastChannel: 모든 탭에 Frontal 결과 전송');
 
         alert('Frontal 분석이 저장되었습니다.');
         window.close();

@@ -437,9 +437,46 @@ export default function DashboardPage() {
       sessionStorage.removeItem('analysisData'); // 사용 후 삭제
     }
 
+    // BroadcastChannel로 Frontal 분석 결과 받기 (window.opener가 안 될 때 백업)
+    const channel = new BroadcastChannel('analysis_updates');
+    channel.onmessage = (event) => {
+      console.log('📢 BroadcastChannel received:', event.data);
+      if (event.data.type === 'FRONTAL_ANALYSIS_COMPLETE' && event.data.annotatedImageUrl) {
+        console.log('✅ BroadcastChannel: Frontal 결과 수신:', event.data.annotatedImageUrl);
+        setFrontalResultImage(event.data.annotatedImageUrl);
+        setUploadedFrontalResult(event.data.annotatedImageUrl);
+      }
+    };
+
+    // localStorage에서 Frontal 결과 확인 (추가 백업)
+    const checkFrontalResult = () => {
+      const stored = localStorage.getItem('frontalAnalysisResult');
+      if (stored) {
+        try {
+          const result = JSON.parse(stored);
+          // 5분 이내의 결과만 사용
+          if (Date.now() - result.timestamp < 5 * 60 * 1000) {
+            console.log('✅ localStorage에서 Frontal 결과 복원:', result.annotatedImageUrl);
+            setFrontalResultImage(result.annotatedImageUrl);
+            setUploadedFrontalResult(result.annotatedImageUrl);
+            localStorage.removeItem('frontalAnalysisResult'); // 사용 후 삭제
+          }
+        } catch (e) {
+          console.error('Failed to parse frontalAnalysisResult:', e);
+        }
+      }
+    };
+
+    // 페이지 포커스 시 localStorage 확인
+    window.addEventListener('focus', checkFrontalResult);
+    // 초기 로드 시에도 확인
+    checkFrontalResult();
+
     // cleanup
     return () => {
       window.removeEventListener('message', handleMessage);
+      window.removeEventListener('focus', checkFrontalResult);
+      channel.close();
     };
   }, []);
 
