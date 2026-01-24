@@ -432,13 +432,15 @@ export default function LandmarkPage() {
               annotatedImageUrl: s3AnnotatedUrl, // S3 URL 전송
               originalImageUrl: s3OriginalUrl, // 원본 S3 URL 전송
               analysisId: saveResult.analysisId, // 분석 ID 전송
+              chartNumber: saveResult.chartNumber, // 차트번호 전송
             }
           }, '*');
 
           console.log('Sent analysis data to opener window with S3 URLs:', {
             annotatedImageUrl: s3AnnotatedUrl,
             originalImageUrl: s3OriginalUrl,
-            analysisId: saveResult.analysisId
+            analysisId: saveResult.analysisId,
+            chartNumber: saveResult.chartNumber
           });
         }
 

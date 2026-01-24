@@ -201,8 +201,15 @@ export default function DashboardPage() {
         console.log('Has angles:', !!event.data.data.angles);
         console.log('Has diagnosis:', !!event.data.data.diagnosis);
         console.log('Has measurements:', !!event.data.data.measurements);
+        console.log('Has chartNumber:', !!event.data.data.chartNumber);
         console.log('Keys:', Object.keys(event.data.data));
         setAnalysisData(event.data.data);
+
+        // 차트번호 설정
+        if (event.data.data.chartNumber) {
+          console.log('Setting chart number from landmark:', event.data.data.chartNumber);
+          setChartNumber(event.data.data.chartNumber);
+        }
 
         // 랜드마크가 표시된 이미지 저장
         if (event.data.data.annotatedImageUrl) {
@@ -548,11 +555,44 @@ export default function DashboardPage() {
     return null; // useEffect에서 리다이렉트 처리
   }
 
-  const handleFilesUploaded = (files: File[]) => {
+  const handleFilesUploaded = async (files: File[]) => {
     // 새 파일이 업로드되면 이전 측정값만 초기화 (환자 정보는 유지)
     clearAll();
     setUploadedFiles(prev => [...prev, ...files]);
     // 환자 정보는 초기화하지 않음 - 사용자가 이미 입력했을 수 있음
+
+    // 새 파일 업로드 시 분석 레코드 생성 및 차트번호 할당
+    if (files.length > 0 && !isFromHistory) {
+      try {
+        const response = await fetch(`${basePath}/api/analysis/create`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileName: files[0].name,
+            patientName: patientName || '',
+            patientBirthDate: patientBirthDate || ''
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ New analysis created:', result);
+          setChartNumber(result.chartNumber);
+          setAnalysisData((prev: any) => ({
+            ...prev,
+            analysisId: result.analysisId,
+            analysisCode: result.analysisCode,
+            chartNumber: result.chartNumber
+          }));
+          // sessionStorage에도 저장 (landmark/psa/pso에서 사용)
+          sessionStorage.setItem('analysisId', result.analysisId);
+        } else {
+          console.error('Failed to create analysis:', await response.text());
+        }
+      } catch (error) {
+        console.error('Error creating analysis:', error);
+      }
+    }
   };
 
   const handleRemoveFile = (index: number) => {
@@ -950,6 +990,9 @@ export default function DashboardPage() {
               </Link>
               <button
                 onClick={() => {
+                  console.log('🔄 새 분석 시작 버튼 클릭됨');
+                  alert('새 분석을 시작합니다. 모든 데이터가 초기화됩니다.');
+
                   // Zustand store 초기화
                   clearAll();
 
