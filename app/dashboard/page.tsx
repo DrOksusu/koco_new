@@ -603,7 +603,7 @@ export default function DashboardPage() {
         }
 
         // 새 창으로 열기
-        const newWindow = window.open('/landmark', '_blank',
+        const newWindow = window.open(`${basePath}/landmark`, '_blank',
           'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
         if (newWindow) {
@@ -652,7 +652,7 @@ export default function DashboardPage() {
             }
 
             // 새 창으로 열기
-            const newWindow = window.open('/landmark', '_blank',
+            const newWindow = window.open(`${basePath}/landmark`, '_blank',
               'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
             if (newWindow) {
@@ -717,7 +717,7 @@ export default function DashboardPage() {
           console.log('🗑️ Cleared old PSA data for new analysis (keeping landmarkData for scale factor)');
 
           // 새 창으로 열기
-          const newWindow = window.open('/psa', '_blank',
+          const newWindow = window.open(`${basePath}/psa`, '_blank',
             'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
           if (newWindow) {
@@ -778,7 +778,7 @@ export default function DashboardPage() {
               console.log('🗑️ Cleared old PSA data for new analysis (keeping landmarkData for scale factor)');
 
               // 새 창으로 열기
-              const newWindow = window.open('/psa', '_blank',
+              const newWindow = window.open(`${basePath}/psa`, '_blank',
                 'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
               if (newWindow) {
@@ -831,7 +831,7 @@ export default function DashboardPage() {
           console.log('🗑️ Cleared old PSO data for new analysis (keeping landmarkData for scale factor)');
 
           // 새 창으로 열기
-          const newWindow = window.open('/pso', '_blank',
+          const newWindow = window.open(`${basePath}/pso`, '_blank',
             'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
           if (newWindow) {
@@ -892,7 +892,7 @@ export default function DashboardPage() {
               console.log('🗑️ Cleared old PSO data for new analysis (keeping landmarkData for scale factor)');
 
               // 새 창으로 열기
-              const newWindow = window.open('/pso', '_blank',
+              const newWindow = window.open(`${basePath}/pso`, '_blank',
                 'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
               if (newWindow) {
@@ -1269,7 +1269,7 @@ export default function DashboardPage() {
                       });
 
                       // Frontal 분석 페이지 새 창으로 열기
-                      const newWindow = window.open('/frontal', '_blank',
+                      const newWindow = window.open(`${basePath}/frontal`, '_blank',
                         'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
                       if (newWindow) {
@@ -1380,7 +1380,7 @@ export default function DashboardPage() {
                           }
 
                           // 랜드마크 설정 페이지를 재편집 모드로 열기
-                          const newWindow = window.open('/landmark?reEdit=true', '_blank',
+                          const newWindow = window.open(`${basePath}/landmark?reEdit=true`, '_blank',
                             'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
                           if (newWindow) {
@@ -1499,7 +1499,7 @@ export default function DashboardPage() {
                   sessionStorage.setItem('psaReEdit', 'true');
 
                   // PSA 페이지를 새 창으로 열기
-                  const newWindow = window.open('/psa', '_blank',
+                  const newWindow = window.open(`${basePath}/psa`, '_blank',
                     'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
                   if (newWindow) {
@@ -1622,7 +1622,7 @@ export default function DashboardPage() {
                   sessionStorage.setItem('psoReEdit', 'true');
 
                   // PSO 페이지를 새 창으로 열기
-                  const newWindow = window.open('/pso', '_blank',
+                  const newWindow = window.open(`${basePath}/pso`, '_blank',
                     'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
 
                   if (newWindow) {
