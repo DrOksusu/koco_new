@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
         data: {
           patientName: patientName || 'Unknown Patient',
           patientBirthDate: (patientBirthDate && patientBirthDate.trim() !== '') ? new Date(patientBirthDate) : null,
-          frontalImageUrl: cleanUrl(annotatedImageUrl), // Frontal 전용 이미지
+          annotatedImageUrl: cleanUrl(annotatedImageUrl), // Frontal 분석 이미지 (임시로 annotatedImageUrl 사용)
           fileName,
           analyzedAt: new Date(),
           landmarksData: mergedLandmarks, // 병합된 데이터 저장
@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
           patientBirthDate: (patientBirthDate && patientBirthDate.trim() !== '') ? new Date(patientBirthDate) : null,
           xrayType: 'frontal',
           originalImageUrl: cleanUrl(originalImageUrl),
-          frontalImageUrl: cleanUrl(annotatedImageUrl), // Frontal 전용 이미지
+          annotatedImageUrl: cleanUrl(annotatedImageUrl), // Frontal 분석 이미지 (임시로 annotatedImageUrl 사용)
           fileName,
           analysisStatus: 'completed',
           diagnosisNotes: 'Frontal Ceph Analysis - ZA-Menton Angle Measurement',
