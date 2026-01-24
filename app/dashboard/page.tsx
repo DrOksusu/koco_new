@@ -417,25 +417,40 @@ export default function DashboardPage() {
           annotatedImageUrl: data.annotatedImageUrl // 호환성 체크용
         });
 
-        // Landmark 이미지 설정
+        // Landmark 이미지 설정 (S3 URL이면 서명된 URL로 변환)
         if (data.landmarkImageUrl) {
-          setLandmarkResultImage(data.landmarkImageUrl);
-          setUploadedLandmarkResult(data.landmarkImageUrl);
-          console.log('✅ Landmark image URL set:', data.landmarkImageUrl);
+          processImageUrl(data.landmarkImageUrl).then(signedUrl => {
+            setLandmarkResultImage(signedUrl);
+            setUploadedLandmarkResult(signedUrl);
+            console.log('✅ Landmark image URL set:', signedUrl);
+          });
         }
 
-        // PSA 이미지 설정
+        // PSA 이미지 설정 (S3 URL이면 서명된 URL로 변환)
         if (data.psaImageUrl) {
-          setPsaResultImage(data.psaImageUrl);
-          setUploadedPsaResult(data.psaImageUrl);
-          console.log('✅ PSA image URL set:', data.psaImageUrl);
+          processImageUrl(data.psaImageUrl).then(signedUrl => {
+            setPsaResultImage(signedUrl);
+            setUploadedPsaResult(signedUrl);
+            console.log('✅ PSA image URL set:', signedUrl);
+          });
         }
 
-        // PSO 이미지 설정
+        // PSO 이미지 설정 (S3 URL이면 서명된 URL로 변환)
         if (data.psoImageUrl) {
-          setPsoResultImage(data.psoImageUrl);
-          setUploadedPsoResult(data.psoImageUrl);
-          console.log('✅ PSO image URL set:', data.psoImageUrl);
+          processImageUrl(data.psoImageUrl).then(signedUrl => {
+            setPsoResultImage(signedUrl);
+            setUploadedPsoResult(signedUrl);
+            console.log('✅ PSO image URL set:', signedUrl);
+          });
+        }
+
+        // Frontal 이미지 설정 (S3 URL이면 서명된 URL로 변환)
+        if (data.frontalImageUrl) {
+          processImageUrl(data.frontalImageUrl).then(signedUrl => {
+            setFrontalResultImage(signedUrl);
+            setUploadedFrontalResult(signedUrl);
+            console.log('✅ Frontal image URL set:', signedUrl);
+          });
         }
       }
 
