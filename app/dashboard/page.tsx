@@ -1084,7 +1084,7 @@ export default function DashboardPage() {
 
       {/* 메인 컨텐츠 영역 */}
       <div className="flex flex-col h-[calc(100vh-4rem)]">
-        {/* 상단 영역: 환자 정보 + 이미지 업로드 + 진단 완료 자료 */}
+        {/* 상단 영역: 환자 정보 + 이미지 업로드 + 분석 완료 */}
         <div className="flex border-b border-gray-200" style={{ height: '45%', minHeight: '300px' }}>
           {/* 왼쪽: 환자 정보 + 이미지 업로드 */}
           <div className="w-1/4 flex flex-col border-r border-gray-200 bg-white">
@@ -1303,7 +1303,7 @@ export default function DashboardPage() {
 
           {/* 오른쪽: 진단 완료 파일 미리보기 */}
           <div className="flex-1 bg-white overflow-auto p-2">
-            <h2 className="text-xs font-semibold text-gray-800 mb-2">진단 완료 자료</h2>
+            <h2 className="text-xs font-semibold text-gray-800 mb-2">분석 완료</h2>
             <div className="flex gap-2">
               {/* 원본 이미지 */}
               <div className="flex-1">
