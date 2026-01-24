@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     // 사용자의 clinicId 가져오기
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { clinicId: true }
+      select: { clinicId: true, email: true }
     });
 
     if (!user) {
@@ -70,7 +70,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const clinicId = user.clinicId;
+    let clinicId = user.clinicId;
+
+    // clinicId가 없으면 기본 클리닉 생성 또는 할당
+    if (!clinicId) {
+      console.log('⚠️ User has no clinicId, creating default clinic...');
+
+      // 기본 클리닉 찾기 또는 생성
+      let defaultClinic = await prisma.clinic.findFirst({
+        where: { name: 'Default Clinic' }
+      });
+
+      if (!defaultClinic) {
+        defaultClinic = await prisma.clinic.create({
+          data: {
+            name: 'Default Clinic',
+            address: 'Default Address',
+            phone: '000-0000-0000'
+          }
+        });
+        console.log('✅ Created default clinic:', defaultClinic.id.toString());
+      }
+
+      // 사용자에게 기본 클리닉 할당
+      await prisma.user.update({
+        where: { id: userId },
+        data: { clinicId: defaultClinic.id }
+      });
+
+      clinicId = defaultClinic.id;
+      console.log('✅ Assigned default clinic to user');
+    }
 
     console.log('Saving Frontal analysis for user:', userId.toString(), 'clinic:', clinicId.toString());
 
