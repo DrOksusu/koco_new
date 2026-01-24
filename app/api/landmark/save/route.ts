@@ -183,11 +183,17 @@ export async function POST(request: NextRequest) {
         mergedAngleCount: Object.keys(mergedAngles).length,
       });
 
+      // originalImageUrl이 없으면 새로 저장, 있으면 유지
+      const newOriginalImageUrl = existingAnalysis.originalImageUrl
+        ? undefined // 기존 값 유지
+        : cleanUrl(originalImageUrl || imageUrl);
+
       analysis = await prisma.xrayAnalysis.update({
         where: { id: existingAnalysis.id },
         data: {
           patientName: patientName || 'Unknown Patient',
           patientBirthDate: (patientBirthDate && patientBirthDate.trim() !== '') ? new Date(patientBirthDate) : null,
+          ...(newOriginalImageUrl && { originalImageUrl: newOriginalImageUrl }), // 원본 이미지 URL
           landmarkImageUrl: cleanUrl(annotatedImageUrl || imageUrl), // Landmark 전용 이미지
           fileName,
           analyzedAt: new Date(),
