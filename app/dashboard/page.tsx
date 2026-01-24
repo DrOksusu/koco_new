@@ -1305,18 +1305,6 @@ export default function DashboardPage() {
           <div className="flex-1 bg-white overflow-auto p-2">
             <h2 className="text-xs font-semibold text-gray-800 mb-2">분석 완료</h2>
             <div className="flex gap-2">
-              {/* 원본 이미지 */}
-              <div className="flex-1">
-                <h3 className="text-xs font-medium text-gray-700 mb-1">Lateral_ceph</h3>
-                <div className="relative border border-gray-300 rounded overflow-hidden bg-gray-50" style={{ aspectRatio: '1706/1373', height: 'auto' }}>
-                  {originalResultImage ? (
-                    <S3Image src={originalResultImage} alt="Original Image" className="w-full h-full object-contain" />
-                  ) : (
-                    <img src={`${basePath}/images/placeholders/sample_lateral.jpg`} alt="Sample Lateral Ceph" className="w-full h-full object-contain opacity-40" />
-                  )}
-                </div>
-              </div>
-
               {/* Landmark 분석 결과 */}
               <div className="flex-1">
                 <h3 className="text-xs font-medium text-gray-700 mb-1">
@@ -1702,6 +1690,22 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+            {/* 진단 준비 완료 섹션 */}
+            <h2 className="text-xs font-semibold text-gray-800 mb-2 mt-4">진단 준비 완료</h2>
+            <div className="flex gap-2">
+              {/* Lateral_ceph 원본 이미지 */}
+              <div className="flex-1">
+                <h3 className="text-xs font-medium text-gray-700 mb-1">Lateral_ceph</h3>
+                <div className="relative border border-gray-300 rounded overflow-hidden bg-gray-50" style={{ aspectRatio: '1706/1373', height: 'auto' }}>
+                  {originalResultImage ? (
+                    <S3Image src={originalResultImage} alt="Original Image" className="w-full h-full object-contain" />
+                  ) : (
+                    <img src={`${basePath}/images/placeholders/sample_lateral.jpg`} alt="Sample Lateral Ceph" className="w-full h-full object-contain opacity-40" />
+                  )}
+                </div>
+              </div>
+            </div>
 
         </div>
       </div>
