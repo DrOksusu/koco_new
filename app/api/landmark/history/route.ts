@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
       return {
         id: analysis.id.toString(),
         type: analysisType,
+        chartNumber: analysis.chartNumber || null, // 차트번호 추가
         title: analysis.fileName || `Analysis ${analysis.analysisCode}`,
         description: `Patient: ${analysis.patientName}`,
         status: analysis.analysisStatus || 'COMPLETED',
@@ -82,6 +83,7 @@ export async function GET(request: NextRequest) {
           angles: angles, // 모든 분석 타입에 angles 포함
           geometry: (isPSA || isPSO) ? geometry : undefined, // PSA/PSO만 geometry 포함
           analysisCode: analysis.analysisCode,
+          chartNumber: analysis.chartNumber || null, // 차트번호 추가
           imageUrl: analysis.originalImageUrl || '', // 원본 이미지
           originalImageUrl: analysis.originalImageUrl || '', // 원본 이미지 URL
           landmarkImageUrl: analysis.landmarkImageUrl || '', // Landmark 전용 이미지

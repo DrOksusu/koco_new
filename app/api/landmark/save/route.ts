@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/authOptions';
 import { prisma } from '@/lib/prisma';
+import { generateChartNumber } from '@/lib/chartNumber';
 
 export async function POST(request: NextRequest) {
   try {
@@ -212,9 +213,14 @@ export async function POST(request: NextRequest) {
 
       const analysisCode = `XRAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+      // 차트번호 생성 (KOCO-0001, KOCO-0002, ...)
+      const chartNumber = await generateChartNumber();
+      console.log('📋 Generated chart number:', chartNumber);
+
       analysis = await prisma.xrayAnalysis.create({
         data: {
           analysisCode,
+          chartNumber,
           userId,
           clinicId,
           patientName: patientName || 'Unknown Patient',
@@ -247,6 +253,7 @@ export async function POST(request: NextRequest) {
       success: true,
       analysisId: analysis.id.toString(),
       analysisCode: analysis.analysisCode,
+      chartNumber: analysis.chartNumber,
     });
 
   } catch (error) {

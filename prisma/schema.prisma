@@ -72,6 +72,7 @@ model Patient {
 model XrayAnalysis {
   id                BigInt             @id @default(autoincrement())
   analysisCode      String             @unique(map: "analysis_code") @map("analysis_code") @db.VarChar(100)
+  chartNumber       String?            @unique(map: "chart_number") @map("chart_number") @db.VarChar(20)
   userId            BigInt             @map("user_id")
   clinicId          BigInt             @map("clinic_id")
   patientId         BigInt?            @map("patient_id")
@@ -101,6 +102,7 @@ model XrayAnalysis {
 
   @@index([clinicId], map: "clinic_id")
   @@index([analysisCode], map: "idx_analysis_code")
+  @@index([chartNumber], map: "idx_chart_number")
   @@index([analysisStatus], map: "idx_analysis_status")
   @@index([createdAt], map: "idx_created_at")
   @@index([patientId], map: "idx_patient_id")

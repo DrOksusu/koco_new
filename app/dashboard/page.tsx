@@ -128,6 +128,7 @@ export default function DashboardPage() {
   const [patientName, setPatientName] = useState('');
   const [patientBirthDate, setPatientBirthDate] = useState('');
   const [diagnosisDate, setDiagnosisDate] = useState(() => new Date().toISOString().split('T')[0]); // 오늘 날짜로 기본 설정
+  const [chartNumber, setChartNumber] = useState<string | null>(null); // 차트번호 (KOCO-0001)
   const [landmarkResultImage, setLandmarkResultImage] = useState<string | null>(null);
   const [psaResultImage, setPsaResultImage] = useState<string | null>(null);
   const [psoResultImage, setPsoResultImage] = useState<string | null>(null);
@@ -321,6 +322,12 @@ export default function DashboardPage() {
         // 기존 데이터에 진단월일이 없으면 오늘 날짜로 설정
         console.log('No diagnosis date in data, using today');
         setDiagnosisDate(new Date().toISOString().split('T')[0]);
+      }
+
+      // 차트번호 복원
+      if (data.chartNumber) {
+        console.log('Setting chart number:', data.chartNumber);
+        setChartNumber(data.chartNumber);
       }
 
       // 이미지 URL이 있으면 미리보기 URL로 설정
@@ -1092,7 +1099,14 @@ export default function DashboardPage() {
             <div className="border-b border-gray-200 px-3 py-2">
               <div className="mb-2 flex justify-between items-center">
                 <div>
-                  <h1 className="text-lg font-bold text-gray-900">환자 정보 입력</h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-lg font-bold text-gray-900">환자 정보 입력</h1>
+                    {chartNumber && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-600 text-white">
+                        {chartNumber}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-600">진단을 시작하기 전에 환자 정보를 입력해주세요.</p>
                 </div>
                 {isSaving && (

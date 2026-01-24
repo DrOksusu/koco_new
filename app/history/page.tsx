@@ -11,6 +11,7 @@ const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
 interface DiagnosisRecord {
   id: string;
   type: string;
+  chartNumber?: string | null; // 차트번호 (KOCO-0001)
   title: string;
   description: string;
   status: string;
@@ -482,6 +483,12 @@ export default function HistoryPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
+                        {/* 차트번호 배지 */}
+                        {diagnosis.chartNumber && (
+                          <span className="inline-block px-3 py-1 text-xs font-bold text-white bg-gray-800 rounded-full">
+                            {diagnosis.chartNumber}
+                          </span>
+                        )}
                         <span className="inline-block px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded-full">
                           {diagnosis.type}
                         </span>
@@ -564,11 +571,12 @@ export default function HistoryPage() {
                         // Dashboard로 이동하면서 데이터와 원본 이미지 전달
                         const dataToSend = {
                           analysisId: diagnosis.id, // 자동 저장을 위한 ID 추가
+                          chartNumber: diagnosis.chartNumber, // 차트번호 추가
                           ...diagnosis.result,
                           imageUrl: imageUrl, // 원본 이미지 URL 사용
                           fileName: diagnosis.title || diagnosis.result?.fileName || 'analysis.jpg'
                         };
-                        console.log('Sending to dashboard with analysisId:', diagnosis.id);
+                        console.log('Sending to dashboard with analysisId:', diagnosis.id, 'chartNumber:', diagnosis.chartNumber);
                         sessionStorage.setItem('analysisData', JSON.stringify(dataToSend));
                         router.push('/dashboard');
                       }}
