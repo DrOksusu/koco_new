@@ -265,6 +265,24 @@ export default function DashboardPage() {
             timestamp: event.data.data.timestamp
           }));
         }
+      } else if (event.data.type === 'FRONTAL_ANALYSIS_COMPLETE') {
+        console.log('Received Frontal analysis data:', event.data.data);
+
+        // Frontal 분석 완료 이미지 저장
+        if (event.data.data.annotatedImageUrl) {
+          // Frontal 결과 이미지를 Frontal preview에 표시
+          setFrontalPreviewUrls([event.data.data.annotatedImageUrl]);
+          console.log('✅ Frontal result image set:', event.data.data.annotatedImageUrl);
+        }
+
+        // Frontal 분석 데이터도 저장 (필요한 경우)
+        if (event.data.data.landmarks) {
+          localStorage.setItem('frontalAnalysisData', JSON.stringify({
+            landmarks: event.data.data.landmarks,
+            angles: event.data.data.angles,
+            timestamp: event.data.data.timestamp
+          }));
+        }
       }
     };
 

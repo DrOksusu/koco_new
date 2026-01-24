@@ -401,11 +401,12 @@ export default function FrontalAnalysisPage() {
     link.click();
   };
 
-  // 결과 삽입 (부모 창으로 전송)
-  const handleInsert = () => {
+  // 결과 삽입 (DB 저장 + 부모 창으로 전송)
+  const handleInsert = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // 캔버스에 "FRONTAL" 텍스트 추가
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.font = 'bold 32px sans-serif';
@@ -414,18 +415,105 @@ export default function FrontalAnalysisPage() {
       ctx.fillText('FRONTAL', 10, 40);
     }
 
-    const dataURL = canvas.toDataURL('image/png');
+    // 랜드마크 데이터를 객체로 변환
+    const landmarksObj: Record<string, { x: number; y: number }> = {};
+    points.forEach(point => {
+      landmarksObj[point.name] = { x: point.x, y: point.y };
+    });
 
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage({
-        type: 'FRONTAL_ANALYSIS_RESULT',
-        data: dataURL,
-        angles: angles
-      }, '*');
-      alert('Frontal 분석 결과가 삽입되었습니다!');
-      window.close();
-    } else {
-      alert('부모 창을 찾을 수 없습니다.');
+    // 1. 캔버스 이미지를 S3에 업로드
+    let s3AnnotatedUrl = '';
+    try {
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((b) => {
+          if (b) resolve(b);
+          else reject(new Error('Canvas to blob failed'));
+        }, 'image/png');
+      });
+
+      const formData = new FormData();
+      formData.append('file', blob, `frontal_${Date.now()}.png`);
+      formData.append('type', 'frontal');
+
+      console.log('📤 Uploading Frontal annotated image to S3...');
+      const uploadResponse = await fetch('/api/upload/file', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (uploadResponse.ok) {
+        const uploadResult = await uploadResponse.json();
+        s3AnnotatedUrl = uploadResult.s3Url;
+        console.log('✅ Frontal image uploaded to S3:', s3AnnotatedUrl);
+      } else {
+        const error = await uploadResponse.text();
+        console.error('❌ S3 upload failed:', error);
+        throw new Error('S3 업로드 실패: ' + error);
+      }
+    } catch (error) {
+      console.error('❌ Error uploading Frontal image:', error);
+      alert('이미지 업로드 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
+      return;
+    }
+
+    // 2. 분석 데이터 준비
+    const analysisData = {
+      type: 'FRONTAL',
+      patientName,
+      patientBirthDate,
+      fileName,
+      landmarks: landmarksObj,
+      angles: angles,
+      annotatedImageUrl: s3AnnotatedUrl,
+      originalImageUrl: imageUrl,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('💾 Saving Frontal analysis to DB:', {
+      landmarkCount: Object.keys(landmarksObj).length,
+      angles
+    });
+
+    // 3. API로 DB에 저장
+    try {
+      const response = await fetch('/api/frontal/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(analysisData)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Frontal 분석이 DB에 저장되었습니다:', result);
+
+        // 4. DB 저장 성공 후 Dashboard로 데이터 전송
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({
+            type: 'FRONTAL_ANALYSIS_COMPLETE',
+            data: {
+              ...analysisData,
+              analysisId: result.analysisId,
+              analysisCode: result.analysisCode
+            }
+          }, '*');
+          console.log('✅ Dashboard에 Frontal 완료 메시지 전송');
+        }
+
+        // 5. BroadcastChannel로 모든 탭에 알림 (분석이력 자동 새로고침)
+        const channel = new BroadcastChannel('analysis_updates');
+        channel.postMessage({ type: 'ANALYSIS_SAVED', analysisType: 'FRONTAL' });
+        channel.close();
+        console.log('✅ BroadcastChannel: 모든 탭에 Frontal 저장 알림');
+
+        alert('Frontal 분석이 저장되었습니다.');
+        window.close();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.error || 'DB 저장 실패');
+      }
+    } catch (error) {
+      console.error('❌ Error saving Frontal analysis:', error);
+      alert('저장 중 오류가 발생했습니다: ' + (error instanceof Error ? error.message : '알 수 없는 오류'));
     }
   };
 
