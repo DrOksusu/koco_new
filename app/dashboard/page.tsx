@@ -337,121 +337,106 @@ export default function DashboardPage() {
         setChartNumber(data.chartNumber);
       }
 
-      // 이미지 URL이 있으면 미리보기 URL로 설정
-      if (data.imageUrl) {
-        console.log('Setting image URL from history:', data.imageUrl);
+      // analysisId가 있으면 history에서 온 것이므로 isFromHistory 설정
+      if (data.analysisId) {
+        console.log('Setting isFromHistory=true for analysisId:', data.analysisId);
         setIsFromHistory(true);
+        // sessionStorage에 analysisId 저장 (landmark/psa/pso에서 사용)
+        sessionStorage.setItem('analysisId', data.analysisId);
+      }
 
-        // S3 URL인지 확인하고 서명된 URL 가져오기
-        const processImageUrl = async (url: string) => {
-          console.log('=== processImageUrl Debug ===');
-          console.log('processImageUrl - input URL:', url.substring(0, 100) + '...');
-          console.log('processImageUrl - URL length:', url.length);
-          console.log('processImageUrl - URL type:', {
-            isDataUrl: url.startsWith('data:'),
-            isS3Url: url.includes('.s3.') || url.includes('s3.amazonaws.com'),
-            isBlobUrl: url.startsWith('blob:'),
-            isHttpUrl: url.startsWith('http')
-          });
+      // S3 URL인지 확인하고 서명된 URL 가져오기
+      const processImageUrl = async (url: string) => {
+        if (!url) return url;
+        console.log('processImageUrl - input URL:', url.substring(0, 100) + '...');
 
-          // Data URL인 경우 그대로 반환 (S3Image에서 처리)
-          if (url.startsWith('data:')) {
-            console.log('processImageUrl - Data URL detected, returning as-is');
+        // Data URL인 경우 그대로 반환
+        if (url.startsWith('data:')) {
+          return url;
+        }
+
+        if (url.includes('.s3.') || url.includes('s3.amazonaws.com')) {
+          try {
+            const response = await fetch(`${basePath}/api/landmark/signed-url`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ imageUrl: url })
+            });
+            const result = await response.json();
+            return result.success ? result.signedUrl : url;
+          } catch (error) {
+            console.error('Error getting signed URL:', error);
             return url;
           }
+        }
+        return url;
+      };
 
-          if (url && (url.includes('.s3.') || url.includes('s3.amazonaws.com'))) {
-            try {
-              const response = await fetch(`${basePath}/api/landmark/signed-url`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ imageUrl: url })
-              });
-              const result = await response.json();
-              console.log('processImageUrl - signed URL result:', result.success ? 'SUCCESS' : 'FAILED');
-              return result.success ? result.signedUrl : url;
-            } catch (error) {
-              console.error('Error getting signed URL:', error);
-              return url;
-            }
-          }
-          console.log('processImageUrl - returning original URL (not S3)');
-          return url;
-        };
+      // 가짜 File 객체 생성 (history에서 온 경우)
+      const fakeFile = new File([], data.fileName || 'analysis.jpg', {
+        type: 'image/jpeg'
+      });
+      Object.defineProperty(fakeFile, 'isFromHistory', {
+        value: true,
+        writable: false,
+        enumerable: true
+      });
+      setUploadedFiles([fakeFile]);
+      console.log('Uploaded files set with history flag');
 
-        // 가짜 File 객체 먼저 생성
-        const fakeFile = new File([], data.fileName || 'analysis.jpg', {
-          type: 'image/jpeg'
-        });
-        Object.defineProperty(fakeFile, 'isFromHistory', {
-          value: true,
-          writable: false,
-          enumerable: true
-        });
-        setUploadedFiles([fakeFile]);
-        console.log('Uploaded files set with history flag');
-
-        // 원본 이미지 처리 및 previewUrls 설정
+      // 원본 이미지 처리 및 previewUrls 설정
+      if (data.imageUrl) {
+        console.log('Setting image URL from history:', data.imageUrl);
         processImageUrl(data.imageUrl).then(signedUrl => {
-          console.log('=== Preview URLs Setting Debug ===');
-          console.log('processImageUrl result:', signedUrl.substring(0, 100) + '...');
-          console.log('processImageUrl result length:', signedUrl.length);
-          console.log('processImageUrl result type:', {
-            isDataUrl: signedUrl.startsWith('data:'),
-            isS3Url: signedUrl.includes('.s3.') || signedUrl.includes('s3.amazonaws.com'),
-            isBlobUrl: signedUrl.startsWith('blob:'),
-            isHttpUrl: signedUrl.startsWith('http')
-          });
-          
           setPreviewUrls([signedUrl]);
-          setOriginalResultImage(signedUrl); // 진단 완료 섹션에도 표시
+          setOriginalResultImage(signedUrl);
           console.log('Preview URLs set to:', [signedUrl]);
         });
+      }
 
-        // 랜드마크가 표시된 이미지 처리 (타입별 전용 URL 사용)
-        console.log('📥 Processing analysis images:', {
-          type: data.type,
-          landmarkImageUrl: data.landmarkImageUrl,
-          psaImageUrl: data.psaImageUrl,
-          psoImageUrl: data.psoImageUrl,
-          annotatedImageUrl: data.annotatedImageUrl // 호환성 체크용
+      // 랜드마크가 표시된 이미지 처리 (타입별 전용 URL 사용)
+      console.log('📥 Processing analysis images:', {
+        type: data.type,
+        landmarkImageUrl: data.landmarkImageUrl,
+        psaImageUrl: data.psaImageUrl,
+        psoImageUrl: data.psoImageUrl,
+        frontalImageUrl: data.frontalImageUrl
+      });
+
+      // Landmark 이미지 설정 (S3 URL이면 서명된 URL로 변환)
+      if (data.landmarkImageUrl) {
+        processImageUrl(data.landmarkImageUrl).then(signedUrl => {
+          setLandmarkResultImage(signedUrl);
+          setUploadedLandmarkResult(signedUrl);
+          console.log('✅ Landmark image URL set:', signedUrl);
         });
+      }
 
-        // Landmark 이미지 설정 (S3 URL이면 서명된 URL로 변환)
-        if (data.landmarkImageUrl) {
-          processImageUrl(data.landmarkImageUrl).then(signedUrl => {
-            setLandmarkResultImage(signedUrl);
-            setUploadedLandmarkResult(signedUrl);
-            console.log('✅ Landmark image URL set:', signedUrl);
-          });
-        }
+      // PSA 이미지 설정 (S3 URL이면 서명된 URL로 변환)
+      if (data.psaImageUrl) {
+        processImageUrl(data.psaImageUrl).then(signedUrl => {
+          setPsaResultImage(signedUrl);
+          setUploadedPsaResult(signedUrl);
+          console.log('✅ PSA image URL set:', signedUrl);
+        });
+      }
 
-        // PSA 이미지 설정 (S3 URL이면 서명된 URL로 변환)
-        if (data.psaImageUrl) {
-          processImageUrl(data.psaImageUrl).then(signedUrl => {
-            setPsaResultImage(signedUrl);
-            setUploadedPsaResult(signedUrl);
-            console.log('✅ PSA image URL set:', signedUrl);
-          });
-        }
+      // PSO 이미지 설정 (S3 URL이면 서명된 URL로 변환)
+      if (data.psoImageUrl) {
+        processImageUrl(data.psoImageUrl).then(signedUrl => {
+          setPsoResultImage(signedUrl);
+          setUploadedPsoResult(signedUrl);
+          console.log('✅ PSO image URL set:', signedUrl);
+        });
+      }
 
-        // PSO 이미지 설정 (S3 URL이면 서명된 URL로 변환)
-        if (data.psoImageUrl) {
-          processImageUrl(data.psoImageUrl).then(signedUrl => {
-            setPsoResultImage(signedUrl);
-            setUploadedPsoResult(signedUrl);
-            console.log('✅ PSO image URL set:', signedUrl);
-          });
-        }
-
-        // Frontal 이미지 설정 (S3 URL이면 서명된 URL로 변환)
-        if (data.frontalImageUrl) {
-          processImageUrl(data.frontalImageUrl).then(signedUrl => {
-            setFrontalResultImage(signedUrl);
-            setUploadedFrontalResult(signedUrl);
-            console.log('✅ Frontal image URL set:', signedUrl);
-          });
-        }
+      // Frontal 이미지 설정 (S3 URL이면 서명된 URL로 변환)
+      if (data.frontalImageUrl) {
+        processImageUrl(data.frontalImageUrl).then(signedUrl => {
+          setFrontalResultImage(signedUrl);
+          setUploadedFrontalResult(signedUrl);
+          console.log('✅ Frontal image URL set:', signedUrl);
+        });
       }
 
       // MeasurementDashboard 업데이트

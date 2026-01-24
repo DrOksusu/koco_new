@@ -578,7 +578,8 @@ export default function HistoryPage() {
                         };
                         console.log('Sending to dashboard with analysisId:', diagnosis.id, 'chartNumber:', diagnosis.chartNumber);
                         sessionStorage.setItem('analysisData', JSON.stringify(dataToSend));
-                        router.push('/dashboard');
+                        // router.push 대신 window.location.href 사용하여 페이지 새로고침 보장
+                        window.location.href = `${basePath}/dashboard`;
                       }}
                       className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
                     >
