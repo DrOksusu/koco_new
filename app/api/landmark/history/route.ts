@@ -38,13 +38,14 @@ export async function GET(request: NextRequest) {
       const landmarksData = analysis.landmarksData as Record<string, { x: number; y: number }> | null;
       const anglesData = analysis.anglesData as Record<string, number> | null;
 
-      // 분석 타입 확인 (PSA_, PSO_ 접두사가 있는 랜드마크 확인)
+      // 분석 타입 확인 (PSA_, PSO_, FRONTAL_ 접두사가 있는 랜드마크 확인)
       const landmarks = landmarksData || {};
       const isPSA = Object.keys(landmarks).some(key => key.startsWith('PSA_'));
       const isPSO = Object.keys(landmarks).some(key => key.startsWith('PSO_'));
+      const isFrontal = Object.keys(landmarks).some(key => key.startsWith('FRONTAL_'));
 
       // 분석 타입 결정
-      const analysisType = isPSA ? 'PSA' : isPSO ? 'PSO' : 'LANDMARK';
+      const analysisType = isPSA ? 'PSA' : isPSO ? 'PSO' : isFrontal ? 'FRONTAL' : 'LANDMARK';
 
       // 각도 데이터 변환
       const angles: Record<string, number> = {};
@@ -86,6 +87,7 @@ export async function GET(request: NextRequest) {
           landmarkImageUrl: analysis.landmarkImageUrl || '', // Landmark 전용 이미지
           psaImageUrl: analysis.psaImageUrl || '', // PSA 전용 이미지
           psoImageUrl: analysis.psoImageUrl || '', // PSO 전용 이미지
+          frontalImageUrl: analysis.frontalImageUrl || '', // Frontal 전용 이미지
           fileName: analysis.fileName,
           patientName: analysis.patientName,
           patientBirthDate: analysis.patientBirthDate,

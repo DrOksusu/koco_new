@@ -220,10 +220,12 @@ export default function HistoryPage() {
       }
     };
 
-    // postMessage 리스너 추가 (PSA/Landmark 완료 시 자동 새로고침)
+    // postMessage 리스너 추가 (PSA/PSO/Frontal/Landmark 완료 시 자동 새로고침)
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === 'LANDMARK_ANALYSIS_COMPLETE' ||
-          event.data.type === 'PSA_ANALYSIS_COMPLETE') {
+          event.data.type === 'PSA_ANALYSIS_COMPLETE' ||
+          event.data.type === 'PSO_ANALYSIS_COMPLETE' ||
+          event.data.type === 'FRONTAL_ANALYSIS_COMPLETE') {
         console.log('✅ postMessage: 분석 완료 메시지 수신, 이력 새로고침:', event.data.type);
 
         // 1초 후 새로고침 (DB 저장 완료 대기)
