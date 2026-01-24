@@ -426,7 +426,7 @@ export default function PSAAnalysisPage() {
     // S3에 PSA 이미지 업로드
     if (imageDataUrl) {
       try {
-        const uploadResponse = await fetch('/api/psa/upload-image', {
+        const uploadResponse = await fetch(`${basePath}/api/psa/upload-image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -479,7 +479,7 @@ export default function PSAAnalysisPage() {
 
     // API로 저장 (먼저 DB에 저장)
     try {
-      const response = await fetch('/api/psa/save', {
+      const response = await fetch(`${basePath}/api/psa/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(analysisData)

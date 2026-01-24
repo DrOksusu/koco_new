@@ -5,6 +5,9 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+// basePath 처리 (production에서는 /new 추가)
+const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+
 interface DiagnosisRecord {
   id: string;
   type: string;
@@ -69,7 +72,7 @@ function ImageWithPresignedUrl({
       pendingRequests.add(cleanUrl);
 
       try {
-        const response = await fetch('/api/s3/get-image', {
+        const response = await fetch(`${basePath}/api/s3/get-image`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -254,7 +257,7 @@ export default function HistoryPage() {
 
   const fetchHistory = async () => {
     try {
-      const response = await fetch('/api/landmark/history');
+      const response = await fetch(`${basePath}/api/landmark/history`);
       if (response.ok) {
         const data = await response.json();
         setDiagnoses(data.diagnoses || []);
@@ -540,7 +543,7 @@ export default function HistoryPage() {
                         // S3 URL이면 pre-signed URL 생성
                         if (imageUrl && imageUrl.includes('s3') && imageUrl.includes('amazonaws.com')) {
                           try {
-                            const response = await fetch('/api/s3/get-image', {
+                            const response = await fetch(`${basePath}/api/s3/get-image`, {
                               method: 'POST',
                               headers: {
                                 'Content-Type': 'application/json',

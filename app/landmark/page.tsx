@@ -84,7 +84,7 @@ export default function LandmarkPage() {
           if (data.imageUrl.includes('.s3.') || data.imageUrl.includes('s3.amazonaws.com')) {
             console.log('S3 URL detected, getting signed URL...');
             // S3 URL은 서명된 URL을 받을 때까지 기다림
-            fetch('/api/landmark/signed-url', {
+            fetch(`${basePath}/api/landmark/signed-url`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ imageUrl: data.imageUrl })
@@ -324,7 +324,7 @@ export default function LandmarkPage() {
 
       // 2. S3에 랜드마크 이미지 업로드
       if (imageDataUrl) {
-        const uploadResponse = await fetch('/api/landmark/upload-image', {
+        const uploadResponse = await fetch(`${basePath}/api/landmark/upload-image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -352,7 +352,7 @@ export default function LandmarkPage() {
       if (originalImageUrl) {
         if (originalImageUrl.startsWith('data:') || originalImageUrl.startsWith('blob:')) {
           // data URL 또는 blob URL인 경우 업로드
-          const uploadOriginalResponse = await fetch('/api/landmark/upload-image', {
+          const uploadOriginalResponse = await fetch(`${basePath}/api/landmark/upload-image`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -397,7 +397,7 @@ export default function LandmarkPage() {
       // 기존 분석 ID 가져오기 (있으면 업데이트, 없으면 생성)
       const existingAnalysisId = sessionStorage.getItem('analysisId');
 
-      const saveResponse = await fetch('/api/landmark/save', {
+      const saveResponse = await fetch(`${basePath}/api/landmark/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -436,7 +436,7 @@ export default function FrontalAnalysisPage() {
       formData.append('type', 'frontal');
 
       console.log('📤 Uploading Frontal annotated image to S3...');
-      const uploadResponse = await fetch('/api/upload/file', {
+      const uploadResponse = await fetch(`${basePath}/api/upload/file`, {
         method: 'POST',
         body: formData,
       });
@@ -476,7 +476,7 @@ export default function FrontalAnalysisPage() {
 
     // 3. API로 DB에 저장
     try {
-      const response = await fetch('/api/frontal/save', {
+      const response = await fetch(`${basePath}/api/frontal/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(analysisData)

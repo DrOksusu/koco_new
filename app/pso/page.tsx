@@ -426,7 +426,7 @@ export default function PSOAnalysisPage() {
     // S3에 PSO 이미지 업로드
     if (imageDataUrl) {
       try {
-        const uploadResponse = await fetch('/api/pso/upload-image', {
+        const uploadResponse = await fetch(`${basePath}/api/pso/upload-image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -479,7 +479,7 @@ export default function PSOAnalysisPage() {
 
     // API로 저장 (먼저 DB에 저장)
     try {
-      const response = await fetch('/api/pso/save', {
+      const response = await fetch(`${basePath}/api/pso/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(analysisData)

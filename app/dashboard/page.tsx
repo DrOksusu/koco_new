@@ -161,7 +161,7 @@ export default function DashboardPage() {
           diagnosisDate
         });
 
-        const response = await fetch('/api/landmark/update-patient', {
+        const response = await fetch(`${basePath}/api/landmark/update-patient`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -348,7 +348,7 @@ export default function DashboardPage() {
 
           if (url && (url.includes('.s3.') || url.includes('s3.amazonaws.com'))) {
             try {
-              const response = await fetch('/api/landmark/signed-url', {
+              const response = await fetch(`${basePath}/api/landmark/signed-url`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ imageUrl: url })
@@ -620,7 +620,7 @@ export default function DashboardPage() {
           formData.append('file', file);
           formData.append('userId', 'ok4192ok@gmail.com'); // 실제로는 세션에서 가져와야 함
 
-          const uploadResponse = await fetch('/api/upload/file', {
+          const uploadResponse = await fetch(`${basePath}/api/upload/file`, {
             method: 'POST',
             body: formData,
           });
@@ -734,7 +734,7 @@ export default function DashboardPage() {
             formData.append('file', file);
             formData.append('userId', 'ok4192ok@gmail.com'); // 실제로는 세션에서 가져와야 함
 
-            const uploadResponse = await fetch('/api/upload/file', {
+            const uploadResponse = await fetch(`${basePath}/api/upload/file`, {
               method: 'POST',
               body: formData,
             });
@@ -848,7 +848,7 @@ export default function DashboardPage() {
             formData.append('file', file);
             formData.append('userId', 'ok4192ok@gmail.com'); // 실제로는 세션에서 가져와야 함
 
-            const uploadResponse = await fetch('/api/upload/file', {
+            const uploadResponse = await fetch(`${basePath}/api/upload/file`, {
               method: 'POST',
               body: formData,
             });
@@ -1431,7 +1431,7 @@ export default function DashboardPage() {
                   let imageUrlToUse = originalResultImage;
                   if (originalResultImage && (originalResultImage.includes('.s3.') || originalResultImage.includes('s3.amazonaws.com'))) {
                     try {
-                      const response = await fetch('/api/landmark/signed-url', {
+                      const response = await fetch(`${basePath}/api/landmark/signed-url`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ imageUrl: originalResultImage })
@@ -1554,7 +1554,7 @@ export default function DashboardPage() {
                   let imageUrlToUse = originalResultImage;
                   if (originalResultImage && (originalResultImage.includes('.s3.') || originalResultImage.includes('s3.amazonaws.com'))) {
                     try {
-                      const response = await fetch('/api/landmark/signed-url', {
+                      const response = await fetch(`${basePath}/api/landmark/signed-url`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ imageUrl: originalResultImage })

@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { MeasurementDefinition } from '@/types/measurementDefinition.types';
 import toast, { Toaster } from 'react-hot-toast';
 
+// basePath 처리 (production에서는 /new 추가)
+const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+
 export default function MeasurementsAdminPage() {
   const [definitions, setDefinitions] = useState<MeasurementDefinition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +17,7 @@ export default function MeasurementsAdminPage() {
   const fetchDefinitions = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/measurements');
+      const response = await fetch(`${basePath}/api/admin/measurements`);
       const data = await response.json();
       if (data.success) {
         setDefinitions(data.definitions);

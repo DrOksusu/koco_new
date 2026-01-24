@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { DiagnosisDefinition } from '@/types/diagnosisDefinition.types';
 import toast, { Toaster } from 'react-hot-toast';
 
+// basePath 처리 (production에서는 /new 추가)
+const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+
 export default function DiagnosisAdminPage() {
   const [definitions, setDefinitions] = useState<DiagnosisDefinition[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +17,7 @@ export default function DiagnosisAdminPage() {
   const fetchDefinitions = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/admin/diagnosis');
+      const response = await fetch(`${basePath}/api/admin/diagnosis`);
       const data = await response.json();
       if (data.success) {
         setDefinitions(data.definitions);
