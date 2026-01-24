@@ -35,6 +35,7 @@ export default function FrontalAnalysisPage() {
   const [fileName, setFileName] = useState<string>('');
   const [patientName, setPatientName] = useState<string>('');
   const [patientBirthDate, setPatientBirthDate] = useState<string>('');
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
 
   const [points, setPoints] = useState<{ name: string; x: number; y: number }[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -54,11 +55,13 @@ export default function FrontalAnalysisPage() {
     const storedFileName = sessionStorage.getItem('frontalFileName');
     const storedPatientName = sessionStorage.getItem('patientName');
     const storedPatientBirthDate = sessionStorage.getItem('patientBirthDate');
+    const storedAnalysisId = sessionStorage.getItem('analysisId');
 
     console.log('Frontal Page - SessionStorage data:', {
       hasImage: !!storedImage,
       fileName: storedFileName,
       patientName: storedPatientName,
+      analysisId: storedAnalysisId,
     });
 
     if (storedImage) {
@@ -66,6 +69,10 @@ export default function FrontalAnalysisPage() {
       setFileName(storedFileName || 'Frontal Ceph');
       setPatientName(storedPatientName || '');
       setPatientBirthDate(storedPatientBirthDate || '');
+      if (storedAnalysisId) {
+        setAnalysisId(storedAnalysisId);
+        console.log('✅ Frontal: 기존 분석 업데이트 모드 (ID:', storedAnalysisId, ')');
+      }
     } else {
       alert('Frontal Ceph 이미지를 찾을 수 없습니다.');
       window.close();
@@ -458,6 +465,7 @@ export default function FrontalAnalysisPage() {
 
     // 2. 분석 데이터 준비
     const analysisData = {
+      analysisId, // 기존 분석 업데이트용 ID
       type: 'FRONTAL',
       patientName,
       patientBirthDate,
@@ -470,6 +478,8 @@ export default function FrontalAnalysisPage() {
     };
 
     console.log('💾 Saving Frontal analysis to DB:', {
+      analysisId: analysisId || 'NEW',
+      mode: analysisId ? 'UPDATE' : 'CREATE',
       landmarkCount: Object.keys(landmarksObj).length,
       angles
     });
