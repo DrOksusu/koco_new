@@ -1194,8 +1194,32 @@ export default function DashboardPage() {
                       setTimeout(() => setShowFrontalTooltip(false), 2500);
                       return;
                     }
-                    // TODO: Frontal 분석 페이지로 이동
-                    toast('Frontal 분석 기능은 준비 중입니다.', { icon: '🚧' });
+
+                    // Frontal 이미지를 sessionStorage에 저장
+                    const frontalImageUrl = frontalPreviewUrls[0];
+                    if (frontalImageUrl) {
+                      sessionStorage.setItem('frontalImage', frontalImageUrl);
+                      sessionStorage.setItem('frontalFileName', uploadedFrontalFiles[0].name);
+                      sessionStorage.setItem('patientName', patientName);
+                      sessionStorage.setItem('patientBirthDate', patientBirthDate);
+
+                      console.log('✅ Frontal: Saved to sessionStorage', {
+                        imageUrl: frontalImageUrl.substring(0, 50) + '...',
+                        fileName: uploadedFrontalFiles[0].name,
+                        patientName,
+                        patientBirthDate
+                      });
+
+                      // Frontal 분석 페이지 새 창으로 열기
+                      const newWindow = window.open('/frontal', '_blank',
+                        'width=1400,height=900,toolbar=no,menubar=no,scrollbars=yes,resizable=yes');
+
+                      if (newWindow) {
+                        newWindow.focus();
+                      } else {
+                        alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+                      }
+                    }
                   }}
                   disabled={isProcessing}
                   className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
