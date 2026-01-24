@@ -78,13 +78,14 @@ export async function POST(request: NextRequest) {
 
       // 기본 클리닉 찾기 또는 생성
       let defaultClinic = await prisma.clinic.findFirst({
-        where: { name: 'Default Clinic' }
+        where: { clinicCode: 'DEFAULT' }
       });
 
       if (!defaultClinic) {
         defaultClinic = await prisma.clinic.create({
           data: {
-            name: 'Default Clinic',
+            clinicName: 'Default Clinic',
+            clinicCode: 'DEFAULT',
             address: 'Default Address',
             phone: '000-0000-0000'
           }
