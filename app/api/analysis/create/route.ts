@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
           : null,
         xrayType: 'lateral',
         fileName: fileName || 'Untitled',
-        analysisStatus: 'PENDING', // 아직 분석 전
+        analysisStatus: 'in_progress', // 분석 진행 중
       }
     });
 
