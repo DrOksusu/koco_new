@@ -9,11 +9,32 @@ const s3Client = new S3Client({
   },
 });
 
+// 파일 용량 제한 (바이트)
+const FILE_SIZE_LIMITS = {
+  xray: 10 * 1024 * 1024,      // X-ray: 10MB
+  photo: 5 * 1024 * 1024,      // 일반 사진: 5MB
+  max: 15 * 1024 * 1024,       // 절대 최대: 15MB
+};
+
+// X-ray 타입 확인
+const isXrayType = (type: string): boolean => {
+  const xrayTypes = ['panorama', 'lateral_ceph', 'frontal_ceph', 'lateral', 'frontal', 'psa', 'pso', 'landmark'];
+  return xrayTypes.some(t => type.toLowerCase().includes(t));
+};
+
+// 파일 크기를 읽기 쉬운 형식으로 변환
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const userId = formData.get('userId') as string || 'anonymous';
+    const fileType = formData.get('type') as string || '';
 
     if (!file) {
       return NextResponse.json(
@@ -22,7 +43,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('Uploading file to S3:', file.name);
+    // 파일 용량 검증
+    const sizeLimit = isXrayType(fileType) ? FILE_SIZE_LIMITS.xray : FILE_SIZE_LIMITS.photo;
+    if (file.size > FILE_SIZE_LIMITS.max) {
+      return NextResponse.json(
+        {
+          error: 'File too large',
+          message: `파일이 너무 큽니다. 최대 ${formatFileSize(FILE_SIZE_LIMITS.max)}까지 업로드 가능합니다. (현재: ${formatFileSize(file.size)})`,
+        },
+        { status: 413 }
+      );
+    }
+    if (file.size > sizeLimit) {
+      const limitType = isXrayType(fileType) ? 'X-ray' : '사진';
+      return NextResponse.json(
+        {
+          error: 'File too large',
+          message: `${limitType} 파일이 너무 큽니다. 최대 ${formatFileSize(sizeLimit)}까지 업로드 가능합니다. (현재: ${formatFileSize(file.size)})`,
+        },
+        { status: 413 }
+      );
+    }
+
+    console.log('Uploading file to S3:', file.name, '- Size:', formatFileSize(file.size), '- Type:', fileType);
 
     // 파일을 Buffer로 변환
     const buffer = Buffer.from(await file.arrayBuffer());

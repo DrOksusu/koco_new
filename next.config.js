@@ -25,6 +25,13 @@ const nextConfig = {
       'lh3.googleusercontent.com', // Google 프로필 이미지
     ],
   },
+
+  // 파일 업로드 크기 제한 설정 (15MB)
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '15mb',
+    },
+  },
 }
 
 module.exports = nextConfig

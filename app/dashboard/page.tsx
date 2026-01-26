@@ -434,6 +434,39 @@ export default function DashboardPage() {
   }
   if (status === 'unauthenticated') return null;
 
+  // 파일 용량 제한 (바이트)
+  const FILE_SIZE_LIMITS = {
+    xray: 10 * 1024 * 1024,      // X-ray: 10MB
+    photo: 5 * 1024 * 1024,      // 일반 사진: 5MB
+  };
+
+  // 파일 타입별 용량 제한 가져오기
+  const getFileSizeLimit = (type: string): number => {
+    const xrayTypes = ['panorama', 'lateral_ceph', 'frontal_ceph'];
+    return xrayTypes.includes(type) ? FILE_SIZE_LIMITS.xray : FILE_SIZE_LIMITS.photo;
+  };
+
+  // 파일 크기를 읽기 쉬운 형식으로 변환
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // 파일 용량 검증
+  const validateFileSize = (file: File, type: string): { valid: boolean; message?: string } => {
+    const limit = getFileSizeLimit(type);
+    if (file.size > limit) {
+      const xrayTypes = ['panorama', 'lateral_ceph', 'frontal_ceph'];
+      const limitType = xrayTypes.includes(type) ? 'X-ray' : '사진';
+      return {
+        valid: false,
+        message: `파일 크기가 너무 큽니다.\n현재: ${formatFileSize(file.size)}\n${limitType} 최대: ${formatFileSize(limit)}`
+      };
+    }
+    return { valid: true };
+  };
+
   // S3 파일 업로드 함수
   const uploadToS3 = async (file: File, type: string): Promise<string | null> => {
     try {
@@ -464,6 +497,13 @@ export default function DashboardPage() {
 
   // 파일 업로드 핸들러 (S3 업로드)
   const handleFileUpload = async (file: File, setter: (url: string | null) => void, type: string) => {
+    // 파일 용량 검증
+    const validation = validateFileSize(file, type);
+    if (!validation.valid) {
+      toast.error(validation.message || '파일이 너무 큽니다');
+      return;
+    }
+
     // 먼저 로컬 미리보기 표시
     const localUrl = URL.createObjectURL(file);
     setter(localUrl);
@@ -485,6 +525,13 @@ export default function DashboardPage() {
   };
 
   const handleArrayPhotoUpload = async (file: File, index: number, photos: (string | null)[], setPhotos: (photos: (string | null)[]) => void, type: string) => {
+    // 파일 용량 검증
+    const validation = validateFileSize(file, type);
+    if (!validation.valid) {
+      toast.error(validation.message || '파일이 너무 큽니다');
+      return;
+    }
+
     // 먼저 로컬 미리보기 표시
     const localUrl = URL.createObjectURL(file);
     const newPhotos = [...photos];
