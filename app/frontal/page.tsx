@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import MagnifierCanvas from '@/components/MagnifierCanvas';
+import GuideMessage from '@/components/GuideMessage';
 
 // Frontal 랜드마크 정의 (11개)
 const FRONTAL_LANDMARKS = [
@@ -41,10 +43,16 @@ export default function FrontalAnalysisPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [showReferenceImage, setShowReferenceImage] = useState(true);
+  const [showMagnifier, setShowMagnifier] = useState(true);
+  const [showMeasurements, setShowMeasurements] = useState(true);
   const [angles, setAngles] = useState<{ angle1: number; angle2: number; angle3: number; finalAngle: number } | null>(null);
 
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [scale, setScale] = useState({ x: 1, y: 1 });
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [canvasMousePos, setCanvasMousePos] = useState({ x: -1, y: -1 });
+  const [isReferencePopup, setIsReferencePopup] = useState(false);
+  const [magnifierMessage, setMagnifierMessage] = useState(false);
 
   // basePath 처리 (production에서는 /new 추가)
   const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
@@ -72,6 +80,16 @@ export default function FrontalAnalysisPage() {
       if (storedAnalysisId) {
         setAnalysisId(storedAnalysisId);
         console.log('✅ Frontal: 기존 분석 업데이트 모드 (ID:', storedAnalysisId, ')');
+      }
+
+      // 첫 번째 랜드마크 음성 안내
+      if ('speechSynthesis' in window) {
+        setTimeout(() => {
+          const utterance = new SpeechSynthesisUtterance(FRONTAL_LANDMARKS[0]);
+          utterance.lang = 'ko-KR';
+          utterance.rate = 1.5;
+          speechSynthesis.speak(utterance);
+        }, 500);
       }
     } else {
       alert('Frontal Ceph 이미지를 찾을 수 없습니다.');
@@ -105,9 +123,6 @@ export default function FrontalAnalysisPage() {
 
       // 이미지 그리기
       ctx.drawImage(img, 0, 0, newWidth, newHeight);
-
-      // 첫 번째 랜드마크 음성 안내
-      speakMessage(FRONTAL_LANDMARKS[0]);
     };
     img.src = imageUrl;
   }, [imageUrl]);
@@ -150,25 +165,25 @@ export default function FrontalAnalysisPage() {
     });
 
     // 8개 점이 찍히면 각도 계산 및 표시
-    if (points.length >= 8) {
+    if (points.length >= 8 && showMeasurements) {
       calculateAndDisplayAngles(ctx);
     }
 
     // 9개 점: 수직 점선 그리기
-    if (points.length >= 9) {
+    if (points.length >= 9 && showMeasurements) {
       drawPerpendicularDashedLine(ctx);
     }
 
     // 10개 점: 녹색 연장선 그리기
-    if (points.length >= 10) {
+    if (points.length >= 10 && showMeasurements) {
       drawExtendedGreenLine(ctx);
     }
 
     // 11개 점: 빨간 점선 및 최종 각도
-    if (points.length >= 11) {
+    if (points.length >= 11 && showMeasurements) {
       drawFinalAnalysis(ctx);
     }
-  }, [points, scale]);
+  }, [points, scale, showMeasurements]);
 
   useEffect(() => {
     redrawCanvas();
@@ -396,16 +411,21 @@ export default function FrontalAnalysisPage() {
     }
   };
 
-  // 이미지 저장
-  const handleSave = () => {
+  // 캔버스 마우스 이동 핸들러
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const url = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `frontal_ceph_analysis_${fileName}.png`;
-    link.click();
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setMousePos({ x, y });
+    setCanvasMousePos({ x, y });
+  };
+
+  const handleCanvasMouseLeave = () => {
+    setCanvasMousePos({ x: -1, y: -1 });
   };
 
   // 결과 삽입 (DB 저장 + 부모 창으로 전송)
@@ -603,150 +623,240 @@ export default function FrontalAnalysisPage() {
     }
   };
 
+  // 랜드마크 객체 변환 (MagnifierCanvas용)
+  const landmarksForMagnifier = points.reduce((acc, point) => {
+    acc[point.name] = { x: point.x * scale.x, y: point.y * scale.y };
+    return acc;
+  }, {} as Record<string, { x: number; y: number }>);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* 헤더 */}
-      <div className="bg-gray-800 px-4 py-2 flex justify-between items-center">
-        <div>
-          <h1 className="text-lg font-bold">Frontal Ceph 분석</h1>
-          <p className="text-sm text-gray-400">{fileName} | {patientName}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm bg-blue-600 px-2 py-1 rounded">
-            {currentIndex < FRONTAL_LANDMARKS.length
-              ? `${currentIndex + 1}/${FRONTAL_LANDMARKS.length}: ${FRONTAL_LANDMARKS[currentIndex]}`
-              : '분석 완료'}
-          </span>
+      <div className="bg-gray-800 border-b border-gray-700 p-2">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-lg font-bold">
+              Frontal Ceph 분석
+            </h1>
+            <GuideMessage
+              currentLandmark={FRONTAL_LANDMARKS[currentIndex]}
+              currentIndex={currentIndex}
+              totalLandmarks={FRONTAL_LANDMARKS.length}
+            />
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => {
+                setShowMagnifier(!showMagnifier);
+                if (!showMagnifier) {
+                  setMagnifierMessage(true);
+                  setTimeout(() => setMagnifierMessage(false), 3000);
+                }
+              }}
+              className={`px-3 py-1 rounded text-sm ${showMagnifier ? 'bg-blue-600' : 'bg-gray-600'} hover:opacity-80`}
+            >
+              돋보기 {showMagnifier ? 'ON' : 'OFF'}
+            </button>
+            <button
+              onClick={() => setShowReferenceImage(!showReferenceImage)}
+              className={`px-3 py-1 rounded text-sm ${showReferenceImage ? 'bg-blue-600' : 'bg-gray-600'} hover:opacity-80`}
+            >
+              참조 이미지 {showReferenceImage ? 'ON' : 'OFF'}
+            </button>
+            <button
+              onClick={() => setShowMeasurements(!showMeasurements)}
+              className={`px-3 py-1 rounded text-sm ${showMeasurements ? 'bg-purple-600' : 'bg-gray-600'} hover:opacity-80`}
+            >
+              측정값 표시 {showMeasurements ? 'ON' : 'OFF'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 메인 컨텐츠 */}
-      <div className="flex">
-        {/* 캔버스 영역 */}
-        <div className="flex-1 flex justify-center items-start p-4">
-          <div className="relative">
-            {/* 가이드 메시지 */}
-            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded z-10">
-              {currentIndex < FRONTAL_LANDMARKS.length
-                ? FRONTAL_LANDMARKS[currentIndex]
-                : '프론탈 분석 완료'}
-            </div>
+      {/* 메인 콘텐츠 */}
+      <div className="flex h-[calc(100vh-100px)]">
+        {/* 참조 이미지 및 진행 상황 - 좌측 */}
+        {showReferenceImage && (
+          <div className="w-[20%] p-2 border-r border-gray-700 overflow-y-auto">
+            <div className="space-y-3">
+              {/* 참조 이미지 */}
+              <div className="relative">
+                <img
+                  src={`${basePath}/images/landmarks/frontal_diagram.png`}
+                  alt="Frontal Reference"
+                  className="w-full object-contain cursor-pointer"
+                  onDoubleClick={() => setIsReferencePopup(true)}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `${basePath}/images/placeholders/sample_frontal.jpg`;
+                  }}
+                />
+                <p className="text-xs text-gray-400 mt-1 text-center">
+                  더블클릭하여 확대
+                </p>
+              </div>
 
-            <canvas
-              ref={canvasRef}
-              width={canvasSize.width}
-              height={canvasSize.height}
-              onClick={handleCanvasClick}
-              className="border-2 border-gray-600 cursor-crosshair"
-            />
-          </div>
-        </div>
+              {/* 랜드마크 리스트 */}
+              <div className="bg-gray-800 rounded-lg p-3">
+                <h3 className="text-sm font-bold mb-2 text-gray-300">랜드마크 진행 상황</h3>
+                <div className="space-y-1 max-h-[400px] overflow-y-auto">
+                  {FRONTAL_LANDMARKS.map((landmark, index) => {
+                    const isCompleted = index < currentIndex;
+                    const isCurrent = index === currentIndex;
+                    const landmarkNumber = index + 1;
 
-        {/* 사이드바 */}
-        <div className="w-64 bg-gray-800 p-4 space-y-4">
-          {/* 레퍼런스 이미지 */}
-          {showReferenceImage && (
-            <div>
-              <h3 className="text-sm font-semibold mb-2">랜드마크 참조</h3>
-              <img
-                src={`${basePath}/images/placeholders/frontal_diagram.png`}
-                alt="Frontal Diagram"
-                className="w-full border border-gray-600 cursor-pointer"
-                onClick={() => window.open(`${basePath}/images/placeholders/frontal_diagram.png`, '_blank')}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = `${basePath}/images/placeholders/sample_frontal.jpg`;
-                }}
-              />
-            </div>
-          )}
-
-          {/* 랜드마크 목록 */}
-          <div>
-            <h3 className="text-sm font-semibold mb-2">랜드마크 ({points.length}/{FRONTAL_LANDMARKS.length})</h3>
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {FRONTAL_LANDMARKS.map((name, idx) => (
-                <div
-                  key={name}
-                  className={`text-xs px-2 py-1 rounded ${
-                    idx < points.length
-                      ? 'bg-green-600'
-                      : idx === currentIndex
-                      ? 'bg-blue-600'
-                      : 'bg-gray-700'
-                  }`}
-                >
-                  {idx + 1}. {name}
+                    return (
+                      <div
+                        key={landmark}
+                        className={`flex items-center space-x-2 p-1.5 rounded text-xs transition-all ${
+                          isCompleted
+                            ? 'bg-green-900/30 text-green-400'
+                            : isCurrent
+                            ? 'bg-blue-600 text-white font-bold animate-pulse'
+                            : 'bg-gray-700/50 text-gray-400'
+                        }`}
+                      >
+                        <span className="w-6 text-center font-mono">
+                          {isCompleted ? '✓' : landmarkNumber}
+                        </span>
+                        <span className="flex-1">{landmark}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* 각도 결과 */}
-          {angles && (
-            <div className="bg-gray-700 p-3 rounded">
-              <h3 className="text-sm font-semibold mb-2">측정 결과</h3>
-              <div className="text-xs space-y-1">
-                <p>Z-point vs Zygion: {angles.angle1?.toFixed(1)}°</p>
-                <p>Jugal vs Zygion: {angles.angle2?.toFixed(1)}°</p>
-                <p>Antegonial vs Zygion: {angles.angle3?.toFixed(1)}°</p>
-                {angles.finalAngle > 0 && (
-                  <p className="text-red-400 font-bold">ZA-Menton: {angles.finalAngle.toFixed(1)}°</p>
+                {/* 진행 요약 */}
+                <div className="mt-3 pt-3 border-t border-gray-700">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-green-400">완료: {currentIndex}개</span>
+                    <span className="text-yellow-400">남음: {FRONTAL_LANDMARKS.length - currentIndex}개</span>
+                  </div>
+                  <div className="mt-2 w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-300"
+                      style={{ width: `${(currentIndex / FRONTAL_LANDMARKS.length) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* 분석 결과 */}
+                {angles && (
+                  <div className="mt-3 pt-3 border-t border-gray-700">
+                    <h4 className="text-sm font-bold mb-2 text-yellow-400">분석 결과</h4>
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Z-point vs Zygion:</span>
+                        <span className="text-blue-400 font-mono">{angles.angle1?.toFixed(1)}°</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Jugal vs Zygion:</span>
+                        <span className="text-blue-400 font-mono">{angles.angle2?.toFixed(1)}°</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-300">Antegonial vs Zygion:</span>
+                        <span className="text-blue-400 font-mono">{angles.angle3?.toFixed(1)}°</span>
+                      </div>
+                      {angles.finalAngle > 0 && (
+                        <div className="flex justify-between pt-1 border-t border-gray-600">
+                          <span className="text-gray-300">ZA-Menton:</span>
+                          <span className="text-red-400 font-bold">{angles.finalAngle.toFixed(1)}°</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Canvas 영역 */}
+        <div className="flex-1 relative p-2 flex justify-center items-start">
+          <canvas
+            ref={canvasRef}
+            width={canvasSize.width}
+            height={canvasSize.height}
+            onClick={handleCanvasClick}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseLeave={handleCanvasMouseLeave}
+            className="border-2 border-gray-600 cursor-crosshair"
+          />
+
+          {/* 돋보기 - 마우스가 캔버스 안에 있을 때만 표시 */}
+          {showMagnifier && canvasMousePos.x >= 0 && canvasMousePos.y >= 0 && (
+            <MagnifierCanvas
+              imageUrl={imageUrl}
+              mousePos={mousePos}
+              landmarks={landmarksForMagnifier}
+              zoomLevel={0.7}
+            />
           )}
-
-          {/* 버튼들 */}
-          <div className="space-y-2">
-            <button
-              onClick={handleUndo}
-              disabled={points.length === 0}
-              className="w-full px-4 py-2 bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-600 rounded text-sm"
-            >
-              실행 취소
-            </button>
-            <button
-              onClick={handleReset}
-              className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-sm"
-            >
-              처음부터 다시
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!isComplete}
-              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 rounded text-sm"
-            >
-              이미지 저장
-            </button>
-            <button
-              onClick={handleInsert}
-              disabled={!isComplete}
-              className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded text-sm"
-            >
-              결과 삽입
-            </button>
-            <button
-              onClick={() => window.close()}
-              className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded text-sm"
-            >
-              닫기
-            </button>
-          </div>
-
-          {/* 옵션 */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={showReferenceImage}
-                onChange={(e) => setShowReferenceImage(e.target.checked)}
-                className="rounded"
-              />
-              레퍼런스 이미지 표시
-            </label>
-          </div>
         </div>
       </div>
+
+      {/* 하단 버튼 */}
+      <div className="bg-gray-800 border-t border-gray-700 p-2">
+        <div className="flex justify-center space-x-3">
+          <button
+            onClick={handleUndo}
+            disabled={currentIndex === 0}
+            className="px-4 py-1.5 bg-yellow-600 rounded text-sm hover:bg-yellow-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+          >
+            한 칸 전으로
+          </button>
+          <button
+            onClick={handleReset}
+            className="px-4 py-1.5 bg-red-600 rounded text-sm hover:bg-red-700"
+          >
+            처음부터 다시하기
+          </button>
+          <button
+            onClick={handleInsert}
+            disabled={!isComplete}
+            className="px-4 py-1.5 bg-green-600 rounded text-sm hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
+          >
+            분석 완료
+          </button>
+          <button
+            onClick={() => window.close()}
+            className="px-4 py-1.5 bg-gray-600 rounded text-sm hover:bg-gray-700"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+
+      {/* 돋보기 안내 메시지 */}
+      {magnifierMessage && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[60] bg-yellow-400 text-black px-6 py-3 rounded-lg shadow-lg font-medium animate-pulse">
+          돋보기 안에 있는 빨간색 십자가의 중심에 점이 찍힙니다
+        </div>
+      )}
+
+      {/* 참조 이미지 팝업 */}
+      {isReferencePopup && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+          onClick={() => setIsReferencePopup(false)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh]">
+            <img
+              src={`${basePath}/images/landmarks/frontal_diagram.png`}
+              alt="Frontal Reference"
+              className="w-full h-full object-contain"
+              style={{ transform: 'scale(1.1)' }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = `${basePath}/images/placeholders/sample_frontal.jpg`;
+              }}
+            />
+            <button
+              onClick={() => setIsReferencePopup(false)}
+              className="absolute top-4 right-4 text-white bg-red-600 rounded-full w-10 h-10 flex items-center justify-center hover:bg-red-700"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
