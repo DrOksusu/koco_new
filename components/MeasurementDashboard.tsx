@@ -12,7 +12,7 @@ interface MeasurementDashboardProps {
 }
 
 export default function MeasurementDashboard({ initialData }: MeasurementDashboardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const {
     measurements,
     diagnosis,

@@ -167,10 +167,10 @@ export default function LandmarkPage() {
       }
     }
 
-    if (savedImage && savedFileName) {
+    if (savedImage) {
       setImageUrl(savedImage);
       setOriginalImageUrl(savedImage); // 원본 이미지 URL 저장
-      setFileName(savedFileName);
+      setFileName(savedFileName || 'Lateral_Ceph.jpg'); // 파일명 없으면 기본값 사용
 
       // 첫 번째 랜드마크 음성 안내
       if ('speechSynthesis' in window) {
