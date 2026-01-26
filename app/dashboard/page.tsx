@@ -255,9 +255,11 @@ export default function DashboardPage() {
   // 기타 상태
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [patientName, setPatientName] = useState('');
   const [patientBirthDate, setPatientBirthDate] = useState('');
   const [chartNumber, setChartNumber] = useState<string | null>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [outputFormat, setOutputFormat] = useState<'pptx' | 'pdf'>('pptx');
   const [isGeneratingFile, setIsGeneratingFile] = useState(false);
 
@@ -272,6 +274,85 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 이력에서 "이어서 분석하기" 클릭 시 데이터 복원
+  useEffect(() => {
+    const savedAnalysisData = sessionStorage.getItem('analysisData');
+    if (savedAnalysisData) {
+      try {
+        const data = JSON.parse(savedAnalysisData);
+        console.log('📥 Loading analysis data from history:', data);
+
+        // 기본 정보 복원
+        if (data.analysisId) setAnalysisId(data.analysisId.toString());
+        if (data.chartNumber) setChartNumber(data.chartNumber);
+        if (data.patientName) setPatientName(data.patientName);
+        if (data.patientBirthDate) {
+          const dateStr = new Date(data.patientBirthDate).toISOString().split('T')[0];
+          setPatientBirthDate(dateStr);
+        }
+
+        // 엑스레이 이미지 복원
+        if (data.originalImageUrl || data.imageUrl) {
+          setLateralCephImage(data.originalImageUrl || data.imageUrl);
+        }
+        if (data.panoramaImageUrl) {
+          setPanoramaImage(data.panoramaImageUrl);
+        }
+        if (data.frontalOriginalImageUrl) {
+          setFrontalCephImage(data.frontalOriginalImageUrl);
+        }
+
+        // 분석 결과 이미지 복원
+        if (data.landmarkImageUrl) setLandmarkResult(data.landmarkImageUrl);
+        if (data.psaImageUrl) setPsaResult(data.psaImageUrl);
+        if (data.psoImageUrl) setPsoResult(data.psoImageUrl);
+        if (data.frontalImageUrl) setFrontalAxResult(data.frontalImageUrl);
+
+        // 사진 데이터 복원
+        if (data.photosData) {
+          const photos = data.photosData;
+          if (photos.extraoral && Array.isArray(photos.extraoral)) {
+            const extraoral = Array(8).fill(null);
+            photos.extraoral.forEach((url: string, idx: number) => {
+              if (idx < 8) extraoral[idx] = url;
+            });
+            setExtraoralPhotos(extraoral);
+          }
+          if (photos.intraoral && Array.isArray(photos.intraoral)) {
+            const intraoral = Array(5).fill(null);
+            photos.intraoral.forEach((url: string, idx: number) => {
+              if (idx < 5) intraoral[idx] = url;
+            });
+            setIntraoralPhotos(intraoral);
+          }
+          if (photos.posture && Array.isArray(photos.posture)) {
+            const posture = Array(4).fill(null);
+            photos.posture.forEach((url: string, idx: number) => {
+              if (idx < 4) posture[idx] = url;
+            });
+            setPosturePhotos(posture);
+          }
+          if (photos.additionalPosture && Array.isArray(photos.additionalPosture)) {
+            const additionalPosture = Array(4).fill(null);
+            photos.additionalPosture.forEach((url: string, idx: number) => {
+              if (idx < 4) additionalPosture[idx] = url;
+            });
+            setAdditionalPosturePhotos(additionalPosture);
+          }
+        }
+
+        // 분석 데이터 복원 (angles, landmarks)
+        setAnalysisData(data);
+
+        toast.success('이전 분석 데이터를 불러왔습니다');
+        // 사용 후 sessionStorage에서 제거
+        sessionStorage.removeItem('analysisData');
+      } catch (error) {
+        console.error('Error loading analysis data:', error);
+      }
+    }
+  }, []);
+
   // 메시지 수신 (분석 결과)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -282,6 +363,11 @@ export default function DashboardPage() {
         }
         if (event.data.data.chartNumber) {
           setChartNumber(event.data.data.chartNumber);
+        }
+        if (event.data.data.analysisId) {
+          setAnalysisId(event.data.data.analysisId.toString());
+          // 분석 ID가 생성되면 사진 데이터도 저장
+          savePhotosToAnalysis(event.data.data.analysisId.toString());
         }
       } else if (event.data.type === 'PSA_ANALYSIS_COMPLETE') {
         if (event.data.data.annotatedImageUrl) {
@@ -299,7 +385,42 @@ export default function DashboardPage() {
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }, [panoramaImage, extraoralPhotos, intraoralPhotos, posturePhotos, additionalPosturePhotos]);
+
+  // 사진 데이터를 분석에 저장
+  const savePhotosToAnalysis = async (currentAnalysisId: string) => {
+    if (!currentAnalysisId) return;
+
+    const photosData = {
+      extraoral: extraoralPhotos.filter(p => p && !p.startsWith('blob:')),
+      intraoral: intraoralPhotos.filter(p => p && !p.startsWith('blob:')),
+      posture: posturePhotos.filter(p => p && !p.startsWith('blob:')),
+      additionalPosture: additionalPosturePhotos.filter(p => p && !p.startsWith('blob:')),
+    };
+
+    // S3 URL만 있는 것들만 저장 (blob: URL은 제외)
+    const panoramaUrl = panoramaImage && !panoramaImage.startsWith('blob:') ? panoramaImage : null;
+
+    try {
+      const response = await fetch(`${basePath}/api/analysis/update-photos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analysisId: currentAnalysisId,
+          panoramaImageUrl: panoramaUrl,
+          photosData,
+        }),
+      });
+
+      if (response.ok) {
+        console.log('✅ Photos data saved to analysis');
+      } else {
+        console.error('❌ Failed to save photos data');
+      }
+    } catch (error) {
+      console.error('❌ Error saving photos data:', error);
+    }
+  };
 
   // 로그인 체크
   useEffect(() => {
@@ -313,22 +434,80 @@ export default function DashboardPage() {
   }
   if (status === 'unauthenticated') return null;
 
-  // 파일 업로드 핸들러
-  const handleFileUpload = (file: File, setter: (url: string | null) => void) => {
-    const url = URL.createObjectURL(file);
-    setter(url);
+  // S3 파일 업로드 함수
+  const uploadToS3 = async (file: File, type: string): Promise<string | null> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', session?.user?.email || 'anonymous');
+      formData.append('type', type);
+
+      const response = await fetch(`${basePath}/api/upload/file`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log(`✅ ${type} uploaded to S3:`, result.s3Url);
+        return result.s3Url;
+      } else {
+        const error = await response.text();
+        console.error(`❌ S3 upload failed for ${type}:`, error);
+        return null;
+      }
+    } catch (error) {
+      console.error(`❌ Error uploading ${type}:`, error);
+      return null;
+    }
   };
 
-  const handleArrayPhotoUpload = (file: File, index: number, photos: (string | null)[], setPhotos: (photos: (string | null)[]) => void) => {
-    const url = URL.createObjectURL(file);
+  // 파일 업로드 핸들러 (S3 업로드)
+  const handleFileUpload = async (file: File, setter: (url: string | null) => void, type: string) => {
+    // 먼저 로컬 미리보기 표시
+    const localUrl = URL.createObjectURL(file);
+    setter(localUrl);
+
+    // S3에 업로드
+    setIsUploading(true);
+    const s3Url = await uploadToS3(file, type);
+    setIsUploading(false);
+
+    if (s3Url) {
+      // 로컬 URL을 S3 URL로 교체
+      URL.revokeObjectURL(localUrl);
+      setter(s3Url);
+      toast.success(`${type} 이미지가 업로드되었습니다`);
+    } else {
+      toast.error(`${type} 업로드 실패`);
+      // 실패해도 로컬 미리보기는 유지
+    }
+  };
+
+  const handleArrayPhotoUpload = async (file: File, index: number, photos: (string | null)[], setPhotos: (photos: (string | null)[]) => void, type: string) => {
+    // 먼저 로컬 미리보기 표시
+    const localUrl = URL.createObjectURL(file);
     const newPhotos = [...photos];
-    newPhotos[index] = url;
+    newPhotos[index] = localUrl;
     setPhotos(newPhotos);
+
+    // S3에 업로드
+    setIsUploading(true);
+    const s3Url = await uploadToS3(file, `${type}_${index + 1}`);
+    setIsUploading(false);
+
+    if (s3Url) {
+      // 로컬 URL을 S3 URL로 교체
+      URL.revokeObjectURL(localUrl);
+      const updatedPhotos = [...newPhotos];
+      updatedPhotos[index] = s3Url;
+      setPhotos(updatedPhotos);
+    }
   };
 
   const handleArrayPhotoRemove = (index: number, photos: (string | null)[], setPhotos: (photos: (string | null)[]) => void) => {
     const newPhotos = [...photos];
-    if (newPhotos[index]) {
+    if (newPhotos[index] && newPhotos[index]!.startsWith('blob:')) {
       URL.revokeObjectURL(newPhotos[index]!);
     }
     newPhotos[index] = null;
@@ -461,8 +640,8 @@ export default function DashboardPage() {
                 <ImageUploadBox
                   label="PANORAMA"
                   image={panoramaImage}
-                  onUpload={(f) => handleFileUpload(f, setPanoramaImage)}
-                  onRemove={() => { if (panoramaImage) URL.revokeObjectURL(panoramaImage); setPanoramaImage(null); }}
+                  onUpload={(f) => handleFileUpload(f, setPanoramaImage, 'panorama')}
+                  onRemove={() => { if (panoramaImage?.startsWith('blob:')) URL.revokeObjectURL(panoramaImage); setPanoramaImage(null); }}
                   placeholder={`${basePath}/images/placeholders/sample_pano.jpg`}
                 />
               </div>
@@ -472,8 +651,8 @@ export default function DashboardPage() {
                 <ImageUploadBox
                   label="Lateral_ceph"
                   image={lateralCephImage}
-                  onUpload={(f) => handleFileUpload(f, setLateralCephImage)}
-                  onRemove={() => { if (lateralCephImage) URL.revokeObjectURL(lateralCephImage); setLateralCephImage(null); }}
+                  onUpload={(f) => handleFileUpload(f, setLateralCephImage, 'lateral_ceph')}
+                  onRemove={() => { if (lateralCephImage?.startsWith('blob:')) URL.revokeObjectURL(lateralCephImage); setLateralCephImage(null); }}
                   placeholder={`${basePath}/images/placeholders/sample_lateral.jpg`}
                 />
               </div>
@@ -515,8 +694,8 @@ export default function DashboardPage() {
                 <ImageUploadBox
                   label="Frontal_ceph"
                   image={frontalCephImage}
-                  onUpload={(f) => handleFileUpload(f, setFrontalCephImage)}
-                  onRemove={() => { if (frontalCephImage) URL.revokeObjectURL(frontalCephImage); setFrontalCephImage(null); }}
+                  onUpload={(f) => handleFileUpload(f, setFrontalCephImage, 'frontal_ceph')}
+                  onRemove={() => { if (frontalCephImage?.startsWith('blob:')) URL.revokeObjectURL(frontalCephImage); setFrontalCephImage(null); }}
                   placeholder={`${basePath}/images/placeholders/sample_frontal.jpg`}
                 />
               </div>
@@ -550,7 +729,7 @@ export default function DashboardPage() {
                   key={idx}
                   label={label}
                   image={extraoralPhotos[idx]}
-                  onUpload={(f) => handleArrayPhotoUpload(f, idx, extraoralPhotos, setExtraoralPhotos)}
+                  onUpload={(f) => handleArrayPhotoUpload(f, idx, extraoralPhotos, setExtraoralPhotos, 'extraoral')}
                   onRemove={() => handleArrayPhotoRemove(idx, extraoralPhotos, setExtraoralPhotos)}
                   labelColor="bg-yellow-400"
                   placeholder={`${basePath}/images/placeholders/sample_photo${idx + 1}.jpg`}
@@ -572,7 +751,7 @@ export default function DashboardPage() {
                   key={idx}
                   label={label}
                   image={intraoralPhotos[idx]}
-                  onUpload={(f) => handleArrayPhotoUpload(f, idx, intraoralPhotos, setIntraoralPhotos)}
+                  onUpload={(f) => handleArrayPhotoUpload(f, idx, intraoralPhotos, setIntraoralPhotos, 'intraoral')}
                   onRemove={() => handleArrayPhotoRemove(idx, intraoralPhotos, setIntraoralPhotos)}
                   labelColor="bg-yellow-400"
                   placeholder={`${basePath}/images/placeholders/sample_oral${idx + 1}.jpg`}
@@ -594,7 +773,7 @@ export default function DashboardPage() {
                   key={idx}
                   label={label}
                   image={posturePhotos[idx]}
-                  onUpload={(f) => handleArrayPhotoUpload(f, idx, posturePhotos, setPosturePhotos)}
+                  onUpload={(f) => handleArrayPhotoUpload(f, idx, posturePhotos, setPosturePhotos, 'posture')}
                   onRemove={() => handleArrayPhotoRemove(idx, posturePhotos, setPosturePhotos)}
                   labelColor="bg-yellow-400"
                   placeholder={`${basePath}/images/placeholders/sample_posture${idx + 1}.jpg`}
@@ -616,7 +795,7 @@ export default function DashboardPage() {
                   key={idx}
                   label={label}
                   image={additionalPosturePhotos[idx]}
-                  onUpload={(f) => handleArrayPhotoUpload(f, idx, additionalPosturePhotos, setAdditionalPosturePhotos)}
+                  onUpload={(f) => handleArrayPhotoUpload(f, idx, additionalPosturePhotos, setAdditionalPosturePhotos, 'additional_posture')}
                   onRemove={() => handleArrayPhotoRemove(idx, additionalPosturePhotos, setAdditionalPosturePhotos)}
                   labelColor="bg-yellow-400"
                   placeholder={`${basePath}/images/placeholders/sample_posture${idx + 5}.jpg`}

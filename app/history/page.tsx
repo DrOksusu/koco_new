@@ -574,7 +574,9 @@ export default function HistoryPage() {
                           chartNumber: diagnosis.chartNumber, // 차트번호 추가
                           ...diagnosis.result,
                           imageUrl: imageUrl, // 원본 이미지 URL 사용
-                          fileName: diagnosis.title || diagnosis.result?.fileName || 'analysis.jpg'
+                          fileName: diagnosis.title || diagnosis.result?.fileName || 'analysis.jpg',
+                          panoramaImageUrl: diagnosis.result?.panoramaImageUrl || '',
+                          photosData: diagnosis.result?.photosData || null,
                         };
                         console.log('Sending to dashboard with analysisId:', diagnosis.id, 'chartNumber:', diagnosis.chartNumber);
                         sessionStorage.setItem('analysisData', JSON.stringify(dataToSend));

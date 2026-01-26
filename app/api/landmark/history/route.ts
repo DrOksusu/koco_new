@@ -91,6 +91,8 @@ export async function GET(request: NextRequest) {
           psoImageUrl: analysis.psoImageUrl || '', // PSO 전용 이미지
           frontalOriginalImageUrl: analysis.frontalOriginalImageUrl || '', // Frontal 원본 이미지
           frontalImageUrl: analysis.frontalImageUrl || '', // Frontal 분석결과 이미지
+          panoramaImageUrl: analysis.panoramaImageUrl || '', // Panorama 이미지
+          photosData: analysis.photosData || null, // 구외/구내/자세 사진 데이터
           fileName: analysis.fileName,
           patientName: analysis.patientName,
           patientBirthDate: analysis.patientBirthDate,

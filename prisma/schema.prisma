@@ -87,6 +87,8 @@ model XrayAnalysis {
   psoImageUrl       String?            @map("pso_image_url") @db.Text
   frontalOriginalImageUrl String?      @map("frontal_original_image_url") @db.Text
   frontalImageUrl   String?            @map("frontal_image_url") @db.Text
+  panoramaImageUrl  String?            @map("panorama_image_url") @db.Text
+  photosData        Json?              @map("photos_data") // extraoral, intraoral, posture photos
   fileName          String?            @map("file_name") @db.VarChar(255)
   analysisStatus    AnalysisStatus?    @default(in_progress) @map("analysis_status")
   diagnosisNotes    String?            @map("diagnosis_notes") @db.Text
