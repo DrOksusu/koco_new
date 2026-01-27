@@ -143,7 +143,12 @@ const ImageUploadBox = memo(function ImageUploadBox({
       >
         {image ? (
           <>
-            <img src={image} alt={label} className="w-full h-full object-cover" />
+            {/* S3 URL인 경우 S3Image 사용, 아니면 일반 img 사용 */}
+            {image.includes('s3') && image.includes('amazonaws.com') ? (
+              <S3Image src={image} alt={label} className="w-full h-full object-cover" />
+            ) : (
+              <img src={image} alt={label} className="w-full h-full object-cover" />
+            )}
             <button
               onClick={(e) => { e.stopPropagation(); onRemove(); }}
               className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600 shadow z-10"
