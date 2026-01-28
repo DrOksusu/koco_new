@@ -268,6 +268,10 @@ export default function DashboardPage() {
   const [outputFormat, setOutputFormat] = useState<'pptx' | 'pdf'>('pptx');
   const [isGeneratingFile, setIsGeneratingFile] = useState(false);
 
+  // 클리닉 정보 상태
+  const [clinicName, setClinicName] = useState<string>('');
+  const [clinicLogoUrl, setClinicLogoUrl] = useState<string | null>(null);
+
   // 프로필 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -436,8 +440,8 @@ export default function DashboardPage() {
     return () => window.removeEventListener('message', handleMessage);
   }, [panoramaImage, extraoralPhotos, intraoralPhotos, posturePhotos, additionalPosturePhotos]);
 
-  // 사진 데이터를 분석에 저장
-  const savePhotosToAnalysis = async (currentAnalysisId: string) => {
+  // 사진 데이터와 환자 정보를 분석에 저장
+  const savePhotosToAnalysis = async (currentAnalysisId: string, includePatientInfo: boolean = false) => {
     if (!currentAnalysisId) return;
 
     const photosData = {
@@ -451,25 +455,34 @@ export default function DashboardPage() {
     // S3 URL만 있는 것들만 저장 (blob: URL은 제외)
     const panoramaUrl = panoramaImage && !panoramaImage.startsWith('blob:') ? panoramaImage : null;
 
+    // 요청 데이터 구성
+    const requestData: any = {
+      analysisId: currentAnalysisId,
+      panoramaImageUrl: panoramaUrl,
+      photosData,
+    };
+
+    // 환자 정보도 포함하는 경우
+    if (includePatientInfo) {
+      requestData.patientName = patientName;
+      requestData.patientBirthDate = patientBirthDate;
+    }
+
     try {
       const response = await fetch(`${basePath}/api/analysis/update-photos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          analysisId: currentAnalysisId,
-          panoramaImageUrl: panoramaUrl,
-          photosData,
-        }),
+        body: JSON.stringify(requestData),
       });
 
       if (response.ok) {
-        console.log('✅ Photos data saved to analysis');
+        console.log('✅ Analysis data saved');
       } else {
         const errorText = await response.text();
-        console.error('❌ Failed to save photos data:', response.status, errorText);
+        console.error('❌ Failed to save analysis data:', response.status, errorText);
       }
     } catch (error) {
-      console.error('❌ Error saving photos data:', error);
+      console.error('❌ Error saving analysis data:', error);
     }
   };
 
@@ -495,12 +508,46 @@ export default function DashboardPage() {
     return () => clearTimeout(timeoutId);
   }, [analysisId, panoramaImage, extraoralPhotos, intraoralPhotos, posturePhotos, additionalPosturePhotos]);
 
+  // 환자 정보 변경 시 자동 저장 (디바운스 2초)
+  useEffect(() => {
+    if (!analysisId) return;
+
+    const timeoutId = setTimeout(() => {
+      console.log('👤 Auto-saving patient info...');
+      savePhotosToAnalysis(analysisId, true);
+    }, 2000); // 2초 디바운스
+
+    return () => clearTimeout(timeoutId);
+  }, [analysisId, patientName, patientBirthDate]);
+
   // 로그인 체크
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signup');
     }
   }, [status, router]);
+
+  // 클리닉 정보 가져오기
+  useEffect(() => {
+    const fetchClinicInfo = async () => {
+      try {
+        const response = await fetch(`${basePath}/api/profile`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.clinic) {
+            setClinicName(data.clinic.clinicName || '');
+            setClinicLogoUrl(data.clinic.logoUrl || null);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch clinic info:', error);
+      }
+    };
+
+    if (status === 'authenticated') {
+      fetchClinicInfo();
+    }
+  }, [status, basePath]);
 
   if (status === 'loading') {
     return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
@@ -1149,6 +1196,8 @@ export default function DashboardPage() {
                     additionalPosturePhotos: additionalPosturePhotos,
                     patientName,
                     patientBirthDate,
+                    clinicName,
+                    clinicLogoUrl,
                     measurements: analysisData?.angles || {},
                     diagnosis: analysisData?.diagnosis,
                     fileType: outputFormat

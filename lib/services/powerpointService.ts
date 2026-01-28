@@ -30,6 +30,10 @@ export interface PowerPointData {
   patientName: string;
   patientBirthDate: string;
 
+  // 클리닉 정보
+  clinicName?: string;
+  clinicLogoUrl?: string | null;
+
   // 계측 데이터
   measurements: Record<string, number>;   // 계측값
   diagnosis?: Record<string, any>;        // 진단 데이터 (선택)
@@ -265,9 +269,32 @@ export async function generatePowerPoint(
     formData.append('totalData', JSON.stringify(totalData));
     formData.append('file_type', data.fileType);
 
+    // 환자 정보 (별도 form data 필드로 전송)
+    if (data.patientName) {
+      formData.append('name', data.patientName);
+    }
+    if (data.patientBirthDate) {
+      formData.append('birth', data.patientBirthDate);
+    }
+
+    // 클리닉 정보 (별도 form data 필드로 전송)
+    if (data.clinicName) {
+      formData.append('clinic_name', data.clinicName);
+    }
+
+    // 클리닉 로고 (URL을 파일로 변환하여 전송)
+    if (data.clinicLogoUrl) {
+      const logoFile = await urlToFile(data.clinicLogoUrl, 'clinic_logo.png');
+      if (logoFile) {
+        formData.append('clinic_logo', logoFile);
+        console.log('📎 Appended clinic_logo');
+      }
+    }
+
     console.log('=== FormData prepared ===');
     console.log('- File type:', data.fileType);
     console.log('- Patient:', data.patientName);
+    console.log('- Clinic:', data.clinicName);
     console.log('- Images:', convertedFiles.length);
     console.log('- Measurements:', Object.keys(data.measurements).length);
 

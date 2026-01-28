@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { analysisId, panoramaImageUrl, photosData, originalImageUrl } = body;
+    const { analysisId, panoramaImageUrl, photosData, originalImageUrl, patientName, patientBirthDate } = body;
 
     if (!analysisId) {
       return NextResponse.json(
@@ -13,11 +13,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('📸 Updating photos for analysis:', analysisId);
+    console.log('📸 Updating analysis:', analysisId);
+    console.log('Patient name:', patientName);
+    console.log('Patient birth date:', patientBirthDate);
     console.log('Panorama URL:', panoramaImageUrl);
     console.log('Photos data:', JSON.stringify(photosData, null, 2));
 
-    // Update the analysis with photos data
+    // Update the analysis with photos data and patient info
     const updateData: any = {};
 
     if (originalImageUrl) {
@@ -30,6 +32,15 @@ export async function POST(request: NextRequest) {
 
     if (photosData) {
       updateData.photosData = photosData;
+    }
+
+    // 환자 정보 업데이트
+    if (patientName !== undefined) {
+      updateData.patientName = patientName;
+    }
+
+    if (patientBirthDate !== undefined && patientBirthDate !== '') {
+      updateData.patientBirthDate = new Date(patientBirthDate);
     }
 
     // Only update if there's something to update
