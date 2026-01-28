@@ -14,6 +14,11 @@ class ImageCache {
   // 캐시 TTL (Time To Live): 50분 (Pre-signed URL은 1시간 유효)
   private readonly TTL = 50 * 60 * 1000;
 
+  // basePath for production
+  private get basePath(): string {
+    return typeof window !== 'undefined' && process.env.NODE_ENV === 'production' ? '/new' : '';
+  }
+
   /**
    * 이미지 URL을 Blob URL로 변환하여 캐싱
    * 동일한 URL에 대한 중복 요청은 대기 중인 Promise를 재사용
@@ -85,7 +90,7 @@ class ImageCache {
     if (isS3URL && !isPreSignedUrl) {
       try {
         console.log('🔑 Getting pre-signed URL for private S3 bucket...');
-        const response = await fetch('/api/s3/get-image', {
+        const response = await fetch(`${this.basePath}/api/s3/get-image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl })
@@ -112,14 +117,26 @@ class ImageCache {
 
     if (shouldUseProxy) {
       try {
-        const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(finalUrl)}`;
+        const proxyUrl = `${this.basePath}/api/image-proxy?url=${encodeURIComponent(finalUrl)}`;
         console.log('🌐 Loading via proxy...');
         const response = await fetch(proxyUrl);
 
         if (response.ok) {
           const blob = await response.blob();
+
+          // blob이 유효한지 확인
+          if (blob.size === 0) {
+            console.error('❌ Proxy returned empty blob');
+            throw new Error('Empty blob received from proxy');
+          }
+
+          // 이미지 타입인지 확인
+          if (!blob.type.startsWith('image/')) {
+            console.warn('⚠️ Blob type is not image:', blob.type, '- attempting to use anyway');
+          }
+
           const blobUrl = URL.createObjectURL(blob);
-          console.log('✅ Proxy load successful, blob size:', blob.size);
+          console.log('✅ Proxy load successful, blob size:', blob.size, 'type:', blob.type);
           return blobUrl;
         } else {
           console.error('❌ Proxy response not OK:', response.status, response.statusText);

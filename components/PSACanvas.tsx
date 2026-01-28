@@ -32,6 +32,7 @@ export default function PSACanvas({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const [scale, setScale] = useState(1);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageLoadError, setImageLoadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedLandmark, setDraggedLandmark] = useState<string | null>(null);
   const animationFrameId = useRef<number | null>(null);
@@ -63,20 +64,39 @@ export default function PSACanvas({
   // 이미지 로드 (최적화: imageCache 사용)
   useEffect(() => {
     let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 2;
 
-    const loadImage = async () => {
+    const loadImage = async (isRetry = false) => {
       // 빈 URL인 경우 로드하지 않음
       if (!imageUrl || imageUrl.trim() === '') {
+        setImageLoadError('이미지 URL이 없습니다');
         return;
       }
 
+      // 상태 초기화
+      if (!isRetry) {
+        setImageLoadError(null);
+        setImageLoaded(false);
+      }
+
       try {
-        console.log('PSACanvas - Loading image via cache:', imageUrl.substring(0, 50));
+        console.log('PSACanvas - Loading image via cache:', imageUrl.substring(0, 100), isRetry ? '(retry)' : '');
+
+        // 재시도 시 캐시 무효화
+        if (isRetry) {
+          imageCache.revoke(imageUrl);
+        }
 
         // imageCache를 통해 이미지 로드 (중복 방지, 자동 캐싱)
         const blobUrl = await imageCache.getOrLoadImage(imageUrl);
 
-        if (!mounted || !blobUrl) return;
+        if (!mounted) return;
+
+        if (!blobUrl) {
+          setImageLoadError('이미지 캐시 로드 실패');
+          return;
+        }
 
         // 이미지 객체 생성 및 로드
         const img = new Image();
@@ -85,14 +105,14 @@ export default function PSACanvas({
           if (!mounted) return;
 
           imageRef.current = img;
-          setImageLoaded(true);
 
+          // 스케일 계산 (imageLoaded 설정 전에 먼저 계산)
           if (canvasRef.current) {
             const canvas = canvasRef.current;
             const parent = canvas.parentElement;
             if (parent) {
-              const maxWidth = parent.clientWidth;
-              const maxHeight = parent.clientHeight - 100;
+              const maxWidth = parent.clientWidth || 800;
+              const maxHeight = (parent.clientHeight || 600) - 100;
               const imgAspect = img.width / img.height;
               const containerAspect = maxWidth / maxHeight;
 
@@ -105,15 +125,35 @@ export default function PSACanvas({
               setScale(newScale * 0.9);
             }
           }
+
+          setImageLoaded(true);
+          setImageLoadError(null);
         };
 
-        img.onerror = (error) => {
-          console.error('PSACanvas - Image element load failed:', error);
+        img.onerror = () => {
+          if (!mounted) return;
+          console.warn('PSACanvas - Image load failed, retry:', retryCount, '/', maxRetries);
+
+          // 재시도
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(() => loadImage(true), 500);
+          } else {
+            setImageLoadError('이미지 로드에 실패했습니다. 페이지를 새로고침 해주세요.');
+          }
         };
 
         img.src = blobUrl;
       } catch (error) {
         console.error('PSACanvas - Failed to load image via cache:', error);
+        if (mounted) {
+          if (retryCount < maxRetries) {
+            retryCount++;
+            setTimeout(() => loadImage(true), 500);
+          } else {
+            setImageLoadError('이미지 로드 중 오류가 발생했습니다');
+          }
+        }
       }
     };
 
@@ -420,16 +460,39 @@ export default function PSACanvas({
 
   return (
     <div className="relative w-full h-full flex items-center justify-center">
+      {/* 캔버스는 항상 렌더링 (스케일 계산을 위해 DOM에 있어야 함) */}
       <canvas
         id="psaCanvas"
         ref={canvasRef}
-        className="border border-gray-300 cursor-crosshair"
+        className={`border border-gray-300 cursor-crosshair ${!imageLoaded || imageLoadError ? 'hidden' : ''}`}
         onClick={handleCanvasClick}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       />
+      {/* 에러 표시 */}
+      {imageLoadError && (
+        <div className="absolute flex flex-col items-center justify-center text-red-500 p-4">
+          <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p className="text-center">{imageLoadError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            새로고침
+          </button>
+        </div>
+      )}
+      {/* 로딩 표시 */}
+      {!imageLoaded && !imageLoadError && (
+        <div className="absolute flex flex-col items-center justify-center text-gray-500">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mb-2"></div>
+          <p>이미지 로딩 중...</p>
+        </div>
+      )}
     </div>
   );
 }

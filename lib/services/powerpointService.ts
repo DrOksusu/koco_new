@@ -6,11 +6,25 @@
 import { urlToFile, downloadBlob, generateFileName } from '@/lib/utils/fileUtils';
 
 export interface PowerPointData {
-  // 이미지 URL들
-  lateralCephUrl: string | null;          // 원본 lateral ceph 이미지
-  psaResultUrl: string | null;            // PSA 분석 결과
-  psoResultUrl: string | null;            // PSO 분석 결과
-  landmarkResultUrl?: string | null;      // Landmark 분석 결과 (선택)
+  // 메인 이미지 URL들
+  lateralCephUrl: string | null;          // 원본 lateral ceph 이미지 (슬라이드 6)
+  psaResultUrl: string | null;            // PSA 분석 결과 (슬라이드 2)
+  psoResultUrl: string | null;            // PSO 분석 결과 (슬라이드 10)
+  landmarkResultUrl?: string | null;      // Landmark 분석 결과 - frontal_ceph (슬라이드 7)
+  frontalAxResultUrl?: string | null;     // Frontal Ax 분석 결과 (슬라이드 11)
+  panoramaUrl?: string | null;            // 파노라마 이미지 (슬라이드 5)
+
+  // 구외사진 8장 (슬라이드 3) - photo1~photo8
+  extraoralPhotos?: (string | null)[];
+
+  // 구내사진 5장 (슬라이드 4) - oralPhoto1~oralPhoto5
+  intraoralPhotos?: (string | null)[];
+
+  // 자세사진 1-4 (슬라이드 8) - posturePhoto1~posturePhoto4
+  posturePhotos?: (string | null)[];
+
+  // 자세사진 5-8 (슬라이드 9) - posturePhoto5~posturePhoto8
+  additionalPosturePhotos?: (string | null)[];
 
   // 환자 정보
   patientName: string;
@@ -77,6 +91,18 @@ export async function generatePowerPoint(
         filename: 'pso_result.jpg',
         formKey: 'pso',
         label: 'PSO Result'
+      },
+      {
+        url: data.panoramaUrl || null,
+        filename: 'pano.jpg',
+        formKey: 'pano',
+        label: 'Panorama'
+      },
+      {
+        url: data.frontalAxResultUrl || null,
+        filename: 'frontal_ax.jpg',
+        formKey: 'frontal_ax',
+        label: 'Frontal Ax Result'
       }
     ];
 
@@ -85,8 +111,64 @@ export async function generatePowerPoint(
       imageConversions.push({
         url: data.landmarkResultUrl,
         filename: 'landmark_result.jpg',
-        formKey: 'frontal_ceph',  // 사용 가능한 슬롯 활용
+        formKey: 'frontal_ceph',
         label: 'Landmark Result'
+      });
+    }
+
+    // 구외사진 8장 (photo1~photo8)
+    if (data.extraoralPhotos) {
+      data.extraoralPhotos.forEach((url, idx) => {
+        if (url) {
+          imageConversions.push({
+            url,
+            filename: `photo_${idx + 1}.jpg`,
+            formKey: `photo${idx + 1}`,
+            label: `Extraoral Photo ${idx + 1}`
+          });
+        }
+      });
+    }
+
+    // 구내사진 5장 (oralPhoto1~oralPhoto5)
+    if (data.intraoralPhotos) {
+      data.intraoralPhotos.forEach((url, idx) => {
+        if (url) {
+          imageConversions.push({
+            url,
+            filename: `oralPhoto_${idx + 1}.jpg`,
+            formKey: `oralPhoto${idx + 1}`,
+            label: `Intraoral Photo ${idx + 1}`
+          });
+        }
+      });
+    }
+
+    // 자세사진 1-4 (posturePhoto1~posturePhoto4)
+    if (data.posturePhotos) {
+      data.posturePhotos.forEach((url, idx) => {
+        if (url) {
+          imageConversions.push({
+            url,
+            filename: `posturePhoto_${idx + 1}.jpg`,
+            formKey: `posturePhoto${idx + 1}`,
+            label: `Posture Photo ${idx + 1}`
+          });
+        }
+      });
+    }
+
+    // 자세사진 5-8 (posturePhoto5~posturePhoto8)
+    if (data.additionalPosturePhotos) {
+      data.additionalPosturePhotos.forEach((url, idx) => {
+        if (url) {
+          imageConversions.push({
+            url,
+            filename: `posturePhoto_${idx + 5}.jpg`,
+            formKey: `posturePhoto${idx + 5}`,
+            label: `Posture Photo ${idx + 5}`
+          });
+        }
       });
     }
 

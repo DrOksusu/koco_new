@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { imageCache } from '@/lib/imageCache';
 
 // basePath 처리 (production에서는 /new 추가)
 const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
@@ -19,12 +20,7 @@ interface DiagnosisRecord {
   createdAt: string;
 }
 
-// S3 이미지를 위한 컴포넌트
-// 전역 캐시로 중복 요청 방지 (dashboard와 동일한 캐시 사용)
-const presignedUrlCache = new Map<string, { url: string; timestamp: number }>();
-const pendingRequests = new Set<string>(); // 진행 중인 요청 추적
-const CACHE_DURATION = 5 * 60 * 1000; // 5분
-
+// S3 이미지를 위한 컴포넌트 (imageCache 사용)
 function ImageWithPresignedUrl({
   imageUrl,
   alt,
@@ -36,123 +32,68 @@ function ImageWithPresignedUrl({
   className?: string;
   onClick?: (e: React.MouseEvent) => void;
 }) {
-  // S3 URL인 경우 초기값을 빈 문자열로 설정하여 403 오류 방지
-  const isS3 = imageUrl && imageUrl.includes('s3') && imageUrl.includes('amazonaws.com');
-  const isPreSigned = imageUrl && imageUrl.includes('X-Amz-Signature');
-
-  const [presignedUrl, setPresignedUrl] = useState<string>(
-    isS3 && !isPreSigned ? '' : imageUrl
-  );
-  const [loading, setLoading] = useState(isS3 && !isPreSigned);
+  const [displayUrl, setDisplayUrl] = useState<string>('');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const generatePresignedUrl = async () => {
-      // S3 URL에서 쿼리 파라미터 제거 (원본 S3 경로만 사용)
-      const cleanUrl = imageUrl.split('?')[0];
-      
-      // 이미 진행 중인 요청이 있는지 확인
-      if (pendingRequests.has(cleanUrl)) {
-        console.log('Request already in progress, skipping duplicate');
-        return;
-      }
-      
-      // 캐시 확인
-      const cached = presignedUrlCache.get(cleanUrl);
-      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        console.log('Using cached pre-signed URL');
-        setPresignedUrl(cached.url);
+    let mounted = true;
+
+    const loadImage = async () => {
+      if (!imageUrl || imageUrl.trim() === '') {
+        setError(true);
         setLoading(false);
         return;
       }
-
-      setLoading(true);
-      setPresignedUrl(''); // 명시적으로 빈 문자열 설정하여 403 방지
-
-      // 진행 중인 요청으로 표시
-      pendingRequests.add(cleanUrl);
 
       try {
-        const response = await fetch(`${basePath}/api/s3/get-image`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ imageUrl: cleanUrl }),
-        });
+        setLoading(true);
+        setError(false);
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        // imageCache를 통해 이미지 로드 (중복 방지, 자동 캐싱)
+        const blobUrl = await imageCache.getOrLoadImage(imageUrl);
 
-        const data = await response.json();
-
-        if (data.presignedUrl) {
-          setPresignedUrl(data.presignedUrl);
-          
-          // 캐시에 저장
-          presignedUrlCache.set(cleanUrl, {
-            url: data.presignedUrl,
-            timestamp: Date.now()
-          });
-        } else {
-          console.error('No presignedUrl in response:', data);
+        if (mounted && blobUrl) {
+          setDisplayUrl(blobUrl);
+          setLoading(false);
+        } else if (mounted) {
           setError(true);
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Error generating pre-signed URL:', error);
-        setError(true);
-      } finally {
-        setLoading(false);
-        // 진행 중인 요청에서 제거
-        pendingRequests.delete(cleanUrl);
+      } catch (err) {
+        console.warn('History image load failed:', imageUrl.substring(0, 50));
+        if (mounted) {
+          setError(true);
+          setLoading(false);
+        }
       }
     };
 
-    // S3 URL이면 항상 새로운 pre-signed URL 생성
-    if (isS3 && !isPreSigned) {
-      generatePresignedUrl();
-    } else if (isPreSigned) {
-      // 이미 pre-signed URL인 경우 바로 사용
-      setPresignedUrl(imageUrl);
-      setLoading(false);
-    } else {
-      // S3 URL이 아닌 경우 (data URL 등)
-      setPresignedUrl(imageUrl);
-      setLoading(false);
-    }
-  }, [imageUrl, isS3, isPreSigned]);
+    loadImage();
+
+    return () => {
+      mounted = false;
+    };
+  }, [imageUrl]);
 
   if (loading) {
     return (
       <div className={className}>
-        <div className="flex items-center justify-center h-full">
+        <div className="flex items-center justify-center h-full bg-gray-100">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !displayUrl) {
     return (
       <div className={className}>
         <div className="flex flex-col items-center justify-center h-full bg-gray-100 p-2">
           <svg className="w-8 h-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          <span className="text-xs text-gray-500 text-center">이미지 로드 실패</span>
-          <span className="text-xs text-gray-400 text-center mt-1">S3 파일 확인 필요</span>
-        </div>
-      </div>
-    );
-  }
-
-  // presignedUrl이 준비되지 않은 경우 로딩 표시
-  if (!presignedUrl) {
-    return (
-      <div className={className}>
-        <div className="flex items-center justify-center h-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="text-xs text-gray-500 text-center">이미지 없음</span>
         </div>
       </div>
     );
@@ -160,35 +101,12 @@ function ImageWithPresignedUrl({
 
   return (
     <img
-      src={presignedUrl}
+      src={displayUrl}
       alt={alt}
       className={className}
       onClick={onClick}
       loading="lazy"
-      onError={(e) => {
-        // 테스트 URL은 무시
-        if (presignedUrl.includes('example.com')) {
-          setError(true);
-          return;
-        }
-
-        console.error('Image load error - 403 Forbidden');
-        console.error('This may indicate:');
-        console.error('1. AWS credentials lack GetObject permission');
-        console.error('2. File does not exist in S3');
-        console.error('3. S3 bucket policy blocks access');
-        console.error('URL (first 100 chars):', presignedUrl.substring(0, 100));
-        
-        // 재시도 로직 추가
-        const img = e.currentTarget as HTMLImageElement;
-        if (img.crossOrigin) {
-          console.log('Retrying without CORS...');
-          img.crossOrigin = null;
-          img.src = presignedUrl + (presignedUrl.includes('?') ? '&' : '?') + 'retry=' + Date.now();
-        } else {
-          setError(true);
-        }
-      }}
+      onError={() => setError(true)}
     />
   );
 }
@@ -202,6 +120,9 @@ export default function HistoryPage() {
   const [selectedDiagnosis, setSelectedDiagnosis] = useState<DiagnosisRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (status === 'authenticated' && session) {
@@ -327,6 +248,74 @@ export default function HistoryPage() {
     }
   };
 
+  // 체크박스 토글
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  // 전체 선택/해제
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredDiagnoses.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredDiagnoses.map(d => d.id)));
+    }
+  };
+
+  // 선택 모드 토글
+  const handleToggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (isSelectionMode) {
+      setSelectedIds(new Set()); // 선택 모드 종료 시 선택 초기화
+    }
+  };
+
+  // 일괄 삭제
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) {
+      alert('삭제할 항목을 선택해주세요.');
+      return;
+    }
+
+    if (!confirm(`선택한 ${selectedIds.size}개의 분석 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch(`${basePath}/api/landmark/history/bulk-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setDiagnoses(diagnoses.filter(d => !selectedIds.has(d.id)));
+        setSelectedIds(new Set());
+        setIsSelectionMode(false);
+        alert(result.message);
+      } else {
+        const error = await response.json();
+        alert(`삭제 실패: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error bulk deleting:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleDownloadExcel = async (diagnosis: DiagnosisRecord) => {
     const { generateExcelFile } = await import('@/lib/excel-generator');
     const result = diagnosis.result;
@@ -432,8 +421,48 @@ export default function HistoryPage() {
               <option value="date">최신순</option>
               <option value="name">이름순</option>
             </select>
+            <button
+              onClick={handleToggleSelectionMode}
+              className={`px-4 py-2 rounded-lg ${
+                isSelectionMode
+                  ? 'bg-gray-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {isSelectionMode ? '선택 취소' : '선택'}
+            </button>
           </div>
         </div>
+
+        {/* 선택 모드 툴바 */}
+        {isSelectionMode && filteredDiagnoses.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === filteredDiagnoses.length && filteredDiagnoses.length > 0}
+                  onChange={handleSelectAll}
+                  className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  전체 선택 ({selectedIds.size}/{filteredDiagnoses.length})
+                </span>
+              </label>
+            </div>
+            <button
+              onClick={handleBulkDelete}
+              disabled={selectedIds.size === 0 || isDeleting}
+              className={`px-4 py-2 rounded-lg text-white ${
+                selectedIds.size === 0 || isDeleting
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-red-600 hover:bg-red-700'
+              }`}
+            >
+              {isDeleting ? '삭제 중...' : `선택 삭제 (${selectedIds.size})`}
+            </button>
+          </div>
+        )}
 
         {diagnoses.length === 0 ? (
           <div className="text-center py-12">
@@ -464,9 +493,32 @@ export default function HistoryPage() {
               {filteredDiagnoses.map((diagnosis) => (
               <div
                 key={diagnosis.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => setSelectedDiagnosis(diagnosis)}
+                className={`bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative ${
+                  selectedIds.has(diagnosis.id) ? 'ring-2 ring-blue-500' : ''
+                }`}
+                onClick={() => {
+                  if (isSelectionMode) {
+                    handleToggleSelect(diagnosis.id);
+                  } else {
+                    setSelectedDiagnosis(diagnosis);
+                  }
+                }}
               >
+                {/* 선택 모드 체크박스 */}
+                {isSelectionMode && (
+                  <div
+                    className="absolute top-2 left-2 z-10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(diagnosis.id)}
+                      onChange={() => handleToggleSelect(diagnosis.id)}
+                      className="w-6 h-6 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </div>
+                )}
+
                 {/* 원본 이미지 썸네일 표시 */}
                 {diagnosis.result?.imageUrl && (
                   <div className="h-48 bg-gray-100">

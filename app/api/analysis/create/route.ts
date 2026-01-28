@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { fileName, patientName, patientBirthDate } = body;
+    const { fileName, patientName, patientBirthDate, originalImageUrl } = body;
 
     const userId = BigInt(session.user.id);
 
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
           : null,
         xrayType: 'lateral',
         fileName: fileName || 'Untitled',
+        originalImageUrl: originalImageUrl || null, // 원본 이미지 URL 저장
         analysisStatus: 'in_progress', // 분석 진행 중
       }
     });

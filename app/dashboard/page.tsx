@@ -279,6 +279,50 @@ export default function DashboardPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 페이지 이탈 시 빈 분석 레코드 삭제를 위한 ref (최신 상태 참조용)
+  const analysisStateRef = useRef({
+    analysisId: null as string | null,
+    patientName: '',
+    hasImages: false,
+    hasResults: false,
+  });
+
+  // 상태 변경 시 ref 업데이트
+  useEffect(() => {
+    const hasImages = !!(panoramaImage || lateralCephImage || frontalCephImage ||
+      extraoralPhotos.some(p => p) || intraoralPhotos.some(p => p) ||
+      posturePhotos.some(p => p) || additionalPosturePhotos.some(p => p));
+    const hasResults = !!(landmarkResult || psaResult || psoResult || frontalAxResult);
+
+    analysisStateRef.current = {
+      analysisId,
+      patientName,
+      hasImages,
+      hasResults,
+    };
+  }, [analysisId, patientName, panoramaImage, lateralCephImage, frontalCephImage,
+      extraoralPhotos, intraoralPhotos, posturePhotos, additionalPosturePhotos,
+      landmarkResult, psaResult, psoResult, frontalAxResult]);
+
+  // 페이지 이탈 시 빈 분석 레코드 자동 삭제
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const { analysisId, patientName, hasImages, hasResults } = analysisStateRef.current;
+
+      // 삭제 조건: analysisId가 있고, 유의미한 데이터가 없는 경우
+      if (analysisId && !patientName.trim() && !hasImages && !hasResults) {
+        console.log('🗑️ Page unload: deleting empty analysis', analysisId);
+
+        // sendBeacon으로 삭제 요청 (페이지 이탈 시에도 전송 보장)
+        const blob = new Blob([JSON.stringify({ analysisId })], { type: 'application/json' });
+        navigator.sendBeacon(`${basePath}/api/analysis/delete`, blob);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [basePath]);
+
   // 이력에서 "이어서 분석하기" 클릭 시 데이터 복원
   useEffect(() => {
     const savedAnalysisData = sessionStorage.getItem('analysisData');
@@ -397,10 +441,11 @@ export default function DashboardPage() {
     if (!currentAnalysisId) return;
 
     const photosData = {
-      extraoral: extraoralPhotos.filter(p => p && !p.startsWith('blob:')),
-      intraoral: intraoralPhotos.filter(p => p && !p.startsWith('blob:')),
-      posture: posturePhotos.filter(p => p && !p.startsWith('blob:')),
-      additionalPosture: additionalPosturePhotos.filter(p => p && !p.startsWith('blob:')),
+      // 인덱스 정보를 유지하기 위해 filter 대신 map 사용 (null 값 유지)
+      extraoral: extraoralPhotos.map(p => (p && !p.startsWith('blob:')) ? p : null),
+      intraoral: intraoralPhotos.map(p => (p && !p.startsWith('blob:')) ? p : null),
+      posture: posturePhotos.map(p => (p && !p.startsWith('blob:')) ? p : null),
+      additionalPosture: additionalPosturePhotos.map(p => (p && !p.startsWith('blob:')) ? p : null),
     };
 
     // S3 URL만 있는 것들만 저장 (blob: URL은 제외)
@@ -420,12 +465,35 @@ export default function DashboardPage() {
       if (response.ok) {
         console.log('✅ Photos data saved to analysis');
       } else {
-        console.error('❌ Failed to save photos data');
+        const errorText = await response.text();
+        console.error('❌ Failed to save photos data:', response.status, errorText);
       }
     } catch (error) {
       console.error('❌ Error saving photos data:', error);
     }
   };
+
+  // 사진 변경 시 자동 저장 (디바운스 2초)
+  useEffect(() => {
+    if (!analysisId) return;
+
+    // S3 URL이 있는 사진만 카운트 (blob: URL 제외)
+    const hasS3Photos =
+      extraoralPhotos.some(p => p && !p.startsWith('blob:')) ||
+      intraoralPhotos.some(p => p && !p.startsWith('blob:')) ||
+      posturePhotos.some(p => p && !p.startsWith('blob:')) ||
+      additionalPosturePhotos.some(p => p && !p.startsWith('blob:')) ||
+      (panoramaImage && !panoramaImage.startsWith('blob:'));
+
+    if (!hasS3Photos) return;
+
+    const timeoutId = setTimeout(() => {
+      console.log('📸 Auto-saving photos data...');
+      savePhotosToAnalysis(analysisId);
+    }, 2000); // 2초 디바운스
+
+    return () => clearTimeout(timeoutId);
+  }, [analysisId, panoramaImage, extraoralPhotos, intraoralPhotos, posturePhotos, additionalPosturePhotos]);
 
   // 로그인 체크
   useEffect(() => {
@@ -523,6 +591,75 @@ export default function DashboardPage() {
       URL.revokeObjectURL(localUrl);
       setter(s3Url);
       toast.success(`${type} 이미지가 업로드되었습니다`);
+
+      // X-ray 이미지는 분석 페이지에서 사용하므로 미리 캐싱 (로딩 속도 개선)
+      if (type === 'lateral_ceph' || type === 'frontal_ceph') {
+        console.log(`🚀 Pre-caching ${type} image for faster analysis page loading...`);
+        imageCache.getOrLoadImage(s3Url).then(() => {
+          console.log(`✅ ${type} image pre-cached successfully`);
+        }).catch((err) => {
+          console.warn(`⚠️ ${type} pre-caching failed (will retry on analysis page):`, err);
+        });
+      }
+
+      // lateral_ceph 업로드 시 분석 레코드 처리
+      if (type === 'lateral_ceph') {
+        if (!chartNumber) {
+          // 새 분석: 차트번호 자동 생성
+          try {
+            const response = await fetch(`${basePath}/api/analysis/create`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileName: file.name,
+                patientName: patientName || '',
+                patientBirthDate: patientBirthDate || '',
+                originalImageUrl: s3Url // 원본 이미지 URL 저장
+              })
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              console.log('✅ New analysis created with chart number:', result.chartNumber);
+              setChartNumber(result.chartNumber);
+              setAnalysisId(result.analysisId);
+              setAnalysisData((prev: any) => ({
+                ...prev,
+                analysisId: result.analysisId,
+                analysisCode: result.analysisCode,
+                chartNumber: result.chartNumber
+              }));
+              // sessionStorage에도 저장 (landmark/psa/pso에서 사용)
+              sessionStorage.setItem('analysisId', result.analysisId);
+              toast.success(`차트번호 ${result.chartNumber} 생성됨`);
+            } else {
+              console.error('Failed to create analysis:', await response.text());
+            }
+          } catch (error) {
+            console.error('Error creating analysis:', error);
+          }
+        } else if (analysisId) {
+          // 기존 분석: originalImageUrl만 업데이트
+          try {
+            const response = await fetch(`${basePath}/api/analysis/update-photos`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                analysisId,
+                originalImageUrl: s3Url
+              })
+            });
+
+            if (response.ok) {
+              console.log('✅ Original image URL updated for existing analysis');
+            } else {
+              console.error('Failed to update original image URL:', await response.text());
+            }
+          } catch (error) {
+            console.error('Error updating original image URL:', error);
+          }
+        }
+      }
     } else {
       toast.error(`${type} 업로드 실패`);
       // 실패해도 로컬 미리보기는 유지
@@ -566,6 +703,37 @@ export default function DashboardPage() {
     setPhotos(newPhotos);
   };
 
+  // S3 URL을 pre-signed URL로 변환 (캐싱하여 분석 페이지에서 재사용)
+  const getPresignedUrl = async (s3Url: string): Promise<string> => {
+    // 이미 pre-signed URL이거나 S3 URL이 아니면 그대로 반환
+    if (!s3Url.includes('s3.amazonaws.com') && !s3Url.includes('.s3.')) {
+      return s3Url;
+    }
+    if (s3Url.includes('X-Amz-Signature')) {
+      return s3Url;
+    }
+
+    try {
+      const response = await fetch(`${basePath}/api/s3/get-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: s3Url })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.presignedUrl) {
+          console.log('✅ Pre-signed URL obtained for analysis page');
+          return data.presignedUrl;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to get pre-signed URL:', error);
+    }
+
+    return s3Url; // 실패 시 원본 URL 반환
+  };
+
   // 분석 시작 핸들러
   const handleStartAnalysis = async (type: 'LANDMARK' | 'PSA' | 'PSO' | 'FRONTAL') => {
     const imageUrl = type === 'FRONTAL' ? frontalCephImage : lateralCephImage;
@@ -576,13 +744,16 @@ export default function DashboardPage() {
 
     setIsProcessing(true);
 
+    // S3 URL인 경우 pre-signed URL로 변환 (분석 페이지에서 API 호출 생략)
+    const presignedUrl = await getPresignedUrl(imageUrl);
+
     if (type === 'FRONTAL') {
-      sessionStorage.setItem('frontalImage', imageUrl);
+      sessionStorage.setItem('frontalImage', presignedUrl);
       sessionStorage.setItem('frontalFileName', 'Frontal_Ceph.jpg');
       sessionStorage.setItem('patientName', patientName);
       sessionStorage.setItem('patientBirthDate', patientBirthDate);
     } else {
-      sessionStorage.setItem('xrayImage', imageUrl);
+      sessionStorage.setItem('xrayImage', presignedUrl);
       sessionStorage.setItem('xrayFileName', 'Lateral_Ceph.jpg');
       sessionStorage.setItem('patientName', patientName);
       sessionStorage.setItem('patientBirthDate', patientBirthDate);
@@ -603,7 +774,28 @@ export default function DashboardPage() {
   };
 
   // 새 분석 시작
-  const handleNewAnalysis = () => {
+  const handleNewAnalysis = async () => {
+    // 기존 빈 분석 레코드가 있으면 먼저 삭제 (차트번호 낭비 방지)
+    const currentAnalysisId = analysisId;
+    const hasImages = !!(panoramaImage || lateralCephImage || frontalCephImage ||
+      extraoralPhotos.some(p => p) || intraoralPhotos.some(p => p) ||
+      posturePhotos.some(p => p) || additionalPosturePhotos.some(p => p));
+    const hasResults = !!(landmarkResult || psaResult || psoResult || frontalAxResult);
+
+    if (currentAnalysisId && !patientName.trim() && !hasImages && !hasResults) {
+      try {
+        console.log('🗑️ Deleting empty analysis before creating new one:', currentAnalysisId);
+        await fetch(`${basePath}/api/analysis/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ analysisId: currentAnalysisId })
+        });
+      } catch (error) {
+        console.error('Error deleting empty analysis:', error);
+      }
+    }
+
+    // 상태 초기화
     clearAll();
     setPanoramaImage(null);
     setLateralCephImage(null);
@@ -619,8 +811,38 @@ export default function DashboardPage() {
     setPatientName('');
     setPatientBirthDate('');
     setChartNumber(null);
+    setAnalysisId(null);
     setAnalysisData(null);
-    toast.success('새 분석을 시작합니다');
+    sessionStorage.removeItem('analysisData');
+    sessionStorage.removeItem('analysisId');
+
+    // 새 분석 레코드 생성 및 차트번호 할당
+    try {
+      const response = await fetch(`${basePath}/api/analysis/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: 'New Analysis',
+          patientName: '',
+          patientBirthDate: ''
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ New analysis created:', result.chartNumber);
+        setChartNumber(result.chartNumber);
+        setAnalysisId(result.analysisId);
+        sessionStorage.setItem('analysisId', result.analysisId);
+        toast.success(`새 분석 시작 (${result.chartNumber})`);
+      } else {
+        console.error('Failed to create analysis:', await response.text());
+        toast.success('새 분석을 시작합니다');
+      }
+    } catch (error) {
+      console.error('Error creating analysis:', error);
+      toast.success('새 분석을 시작합니다');
+    }
   };
 
   return (
@@ -659,16 +881,40 @@ export default function DashboardPage() {
 
             {/* 프로필 */}
             <div className="relative" ref={profileRef}>
-              <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100">
-                <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm">
+              <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-gray-100 border border-gray-200">
+                <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-medium">
                   {(session?.user?.name || session?.user?.email || '?')[0].toUpperCase()}
                 </div>
+                <span className="text-sm text-gray-700 hidden sm:inline">{session?.user?.name || '사용자'}</span>
+                <svg className={`w-4 h-4 text-gray-500 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
               {isProfileOpen && (
                 <div className="absolute right-0 mt-1 w-48 bg-white rounded shadow-lg border py-1 z-50">
-                  <div className="px-3 py-2 border-b text-sm">{session?.user?.email}</div>
+                  <div className="px-3 py-2 border-b text-sm">
+                    <p className="font-medium text-gray-900">{session?.user?.name || '사용자'}</p>
+                    <p className="text-gray-500 text-xs truncate">{session?.user?.email}</p>
+                  </div>
+                  <Link
+                    href="/profile"
+                    className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setIsProfileOpen(false)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      프로필 설정
+                    </span>
+                  </Link>
                   <button onClick={() => signOut({ callbackUrl: '/auth/signin' })} className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">
-                    로그아웃
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      로그아웃
+                    </span>
                   </button>
                 </div>
               )}
@@ -895,6 +1141,12 @@ export default function DashboardPage() {
                     psaResultUrl: psaResult,
                     psoResultUrl: psoResult,
                     landmarkResultUrl: landmarkResult,
+                    frontalAxResultUrl: frontalAxResult,
+                    panoramaUrl: panoramaImage,
+                    extraoralPhotos: extraoralPhotos,
+                    intraoralPhotos: intraoralPhotos,
+                    posturePhotos: posturePhotos,
+                    additionalPosturePhotos: additionalPosturePhotos,
                     patientName,
                     patientBirthDate,
                     measurements: analysisData?.angles || {},

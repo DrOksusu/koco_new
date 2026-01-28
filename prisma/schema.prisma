@@ -14,6 +14,7 @@ model Clinic {
   address       String?        @db.Text
   phone         String?        @db.VarChar(50)
   licenseNumber String?        @map("license_number") @db.VarChar(100)
+  logoUrl       String?        @map("logo_url") @db.Text
   createdAt     DateTime?      @default(now()) @map("created_at") @db.Timestamp(0)
   updatedAt     DateTime?      @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
   patients      Patient[]

@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { analysisId, panoramaImageUrl, photosData } = body;
+    const { analysisId, panoramaImageUrl, photosData, originalImageUrl } = body;
 
     if (!analysisId) {
       return NextResponse.json(
@@ -21,6 +19,10 @@ export async function POST(request: NextRequest) {
 
     // Update the analysis with photos data
     const updateData: any = {};
+
+    if (originalImageUrl) {
+      updateData.originalImageUrl = originalImageUrl;
+    }
 
     if (panoramaImageUrl) {
       updateData.panoramaImageUrl = panoramaImageUrl;
@@ -55,7 +57,5 @@ export async function POST(request: NextRequest) {
       { error: 'Failed to update photos', message: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 }
