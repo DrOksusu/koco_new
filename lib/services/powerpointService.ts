@@ -49,6 +49,11 @@ export interface PowerPointGenerationResult {
   success: boolean;
   filename?: string;
   error?: string;
+  blob?: Blob;  // PDF 미리보기용
+}
+
+export interface GenerateOptions {
+  skipDownload?: boolean;  // true면 다운로드 없이 blob만 반환
 }
 
 /**
@@ -56,7 +61,8 @@ export interface PowerPointGenerationResult {
  */
 export async function generatePowerPoint(
   data: PowerPointData,
-  onProgress?: (message: string) => void
+  onProgress?: (message: string) => void,
+  options?: GenerateOptions
 ): Promise<PowerPointGenerationResult> {
   try {
     // 1. 유효성 검사
@@ -345,6 +351,16 @@ export async function generatePowerPoint(
       data.fileType
     );
 
+    // skipDownload 옵션이 있으면 다운로드 없이 blob만 반환
+    if (options?.skipDownload) {
+      console.log('✅ File generation completed (skip download)');
+      return {
+        success: true,
+        filename,
+        blob
+      };
+    }
+
     // 파일 다운로드
     downloadBlob(blob, filename);
 
@@ -352,7 +368,8 @@ export async function generatePowerPoint(
 
     return {
       success: true,
-      filename
+      filename,
+      blob
     };
 
   } catch (error) {

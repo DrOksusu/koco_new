@@ -272,6 +272,10 @@ export default function DashboardPage() {
   const [clinicName, setClinicName] = useState<string>('');
   const [clinicLogoUrl, setClinicLogoUrl] = useState<string | null>(null);
 
+  // PDF 미리보기 상태
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+
   // 프로필 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -326,6 +330,15 @@ export default function DashboardPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [basePath]);
+
+  // PDF 미리보기 URL 정리 (메모리 누수 방지)
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
 
   // 이력에서 "이어서 분석하기" 클릭 시 데이터 복원
   useEffect(() => {
@@ -1182,38 +1195,109 @@ export default function DashboardPage() {
                   return;
                 }
                 setIsGeneratingFile(true);
+                setIsGeneratingPreview(true);
+
+                const baseData = {
+                  lateralCephUrl: lateralCephImage,
+                  psaResultUrl: psaResult,
+                  psoResultUrl: psoResult,
+                  landmarkResultUrl: landmarkResult,
+                  frontalAxResultUrl: frontalAxResult,
+                  panoramaUrl: panoramaImage,
+                  extraoralPhotos: extraoralPhotos,
+                  intraoralPhotos: intraoralPhotos,
+                  posturePhotos: posturePhotos,
+                  additionalPosturePhotos: additionalPosturePhotos,
+                  patientName,
+                  patientBirthDate,
+                  clinicName,
+                  clinicLogoUrl,
+                  measurements: analysisData?.angles || {},
+                  diagnosis: analysisData?.diagnosis,
+                };
+
                 try {
+                  // 1. 선택한 형식으로 파일 다운로드
                   const result = await generatePowerPoint({
-                    lateralCephUrl: lateralCephImage,
-                    psaResultUrl: psaResult,
-                    psoResultUrl: psoResult,
-                    landmarkResultUrl: landmarkResult,
-                    frontalAxResultUrl: frontalAxResult,
-                    panoramaUrl: panoramaImage,
-                    extraoralPhotos: extraoralPhotos,
-                    intraoralPhotos: intraoralPhotos,
-                    posturePhotos: posturePhotos,
-                    additionalPosturePhotos: additionalPosturePhotos,
-                    patientName,
-                    patientBirthDate,
-                    clinicName,
-                    clinicLogoUrl,
-                    measurements: analysisData?.angles || {},
-                    diagnosis: analysisData?.diagnosis,
+                    ...baseData,
                     fileType: outputFormat
                   }, () => {});
-                  if (result.success) toast.success(`${outputFormat.toUpperCase()} 파일이 생성되었습니다!`);
-                  else toast.error(`파일 생성 실패: ${result.error}`);
+
+                  if (result.success) {
+                    toast.success(`${outputFormat.toUpperCase()} 파일이 생성되었습니다!`);
+                  } else {
+                    toast.error(`파일 생성 실패: ${result.error}`);
+                  }
+
+                  // 2. PDF 미리보기 생성 (별도 요청)
+                  const pdfResult = await generatePowerPoint({
+                    ...baseData,
+                    fileType: 'pdf'
+                  }, () => {}, { skipDownload: true });
+
+                  if (pdfResult.success && pdfResult.blob) {
+                    // 이전 URL 해제
+                    if (pdfPreviewUrl) {
+                      URL.revokeObjectURL(pdfPreviewUrl);
+                    }
+                    const url = URL.createObjectURL(pdfResult.blob);
+                    setPdfPreviewUrl(url);
+                  }
                 } catch (error) {
                   toast.error('파일 생성 중 오류가 발생했습니다');
                 }
                 setIsGeneratingFile(false);
+                setIsGeneratingPreview(false);
               }}
               disabled={isGeneratingFile}
               className={`px-4 py-2 ${isGeneratingFile ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'} text-white rounded font-medium`}
             >
               {isGeneratingFile ? '생성 중...' : '파일 생성하기'}
             </button>
+          </div>
+        </section>
+
+        {/* PDF 미리보기 섹션 */}
+        <section className="bg-white rounded-lg shadow">
+          <div className="bg-gray-200 px-4 py-2 rounded-t-lg flex justify-between items-center">
+            <h2 className="font-bold text-gray-800">PDF 미리보기</h2>
+            {pdfPreviewUrl && (
+              <a
+                href={pdfPreviewUrl}
+                download={`${patientName || 'analysis'}_report.pdf`}
+                className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                PDF 다운로드
+              </a>
+            )}
+          </div>
+          <div className="p-4">
+            {isGeneratingPreview ? (
+              <div className="flex items-center justify-center h-[600px] bg-gray-50 rounded">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-500">PDF 생성 중...</p>
+                </div>
+              </div>
+            ) : pdfPreviewUrl ? (
+              <iframe
+                src={pdfPreviewUrl}
+                className="w-full h-[800px] border rounded"
+                title="PDF 미리보기"
+              />
+            ) : (
+              <div className="flex items-center justify-center h-[200px] bg-gray-50 rounded border-2 border-dashed border-gray-300">
+                <div className="text-center text-gray-400">
+                  <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p>"파일 생성하기" 버튼을 클릭하면<br />PDF 미리보기가 표시됩니다</p>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
