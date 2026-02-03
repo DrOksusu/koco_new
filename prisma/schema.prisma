@@ -249,3 +249,90 @@ model DiagnosisDefinition {
   @@index([isActive], map: "idx_is_active")
   @@map("diagnosis_definitions")
 }
+
+// ===== 챗봇 관련 모델 =====
+
+// 챗봇 룰 (키워드-응답 매칭)
+model ChatRule {
+  id          BigInt    @id @default(autoincrement())
+  keywords    String    @db.Text                     // 쉼표로 구분된 키워드들 (예: "PSA,PSA분석,프로필분석")
+  response    String    @db.Text                     // 텍스트 응답
+  mediaId     BigInt?   @map("media_id")             // 첨부 미디어 (선택)
+  priority    Int       @default(0)                  // 우선순위 (높을수록 먼저 매칭)
+  isActive    Boolean   @default(true) @map("is_active")
+  category    String?   @db.VarChar(100)             // 카테고리 (예: "분석방법", "사용법", "FAQ")
+
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  media       ChatMedia? @relation(fields: [mediaId], references: [id], onUpdate: NoAction)
+
+  @@index([isActive], map: "idx_chat_rule_active")
+  @@index([priority], map: "idx_chat_rule_priority")
+  @@index([category], map: "idx_chat_rule_category")
+  @@map("chat_rules")
+}
+
+// 챗봇 미디어 라이브러리
+model ChatMedia {
+  id          BigInt        @id @default(autoincrement())
+  title       String        @db.VarChar(255)         // 미디어 제목
+  description String?       @db.Text                 // 설명
+  mediaType   ChatMediaType @map("media_type")       // image, video, file
+  s3Key       String        @map("s3_key") @db.Text  // S3 경로
+  fileName    String?       @map("file_name") @db.VarChar(255)
+  fileSize    Int?          @map("file_size")        // 바이트 단위
+  mimeType    String?       @map("mime_type") @db.VarChar(100)
+  thumbnail   String?       @db.Text                 // 썸네일 S3 경로 (동영상용)
+  duration    String?       @db.VarChar(20)          // 동영상 길이 (예: "3:45")
+  isActive    Boolean       @default(true) @map("is_active")
+
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  chatRules   ChatRule[]
+
+  @@index([mediaType], map: "idx_chat_media_type")
+  @@index([isActive], map: "idx_chat_media_active")
+  @@map("chat_media")
+}
+
+// 채팅 세션
+model ChatSession {
+  id          BigInt        @id @default(autoincrement())
+  userId      BigInt        @map("user_id")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  messages    ChatMessage[]
+
+  @@index([userId], map: "idx_chat_session_user")
+  @@map("chat_sessions")
+}
+
+// 채팅 메시지
+model ChatMessage {
+  id          BigInt          @id @default(autoincrement())
+  sessionId   BigInt          @map("session_id")
+  role        ChatRole                                // user, assistant
+  content     String          @db.Text               // 메시지 내용
+  mediaId     BigInt?         @map("media_id")       // 첨부 미디어 (선택)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamp(0)
+
+  session     ChatSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId], map: "idx_chat_message_session")
+  @@index([createdAt], map: "idx_chat_message_created")
+  @@map("chat_messages")
+}
+
+enum ChatMediaType {
+  image
+  video
+  file
+}
+
+enum ChatRole {
+  user
+  assistant
+}

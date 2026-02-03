@@ -9,6 +9,7 @@ import { useMeasurementStore } from '@/store/measurementStore';
 import { imageCache } from '@/lib/imageCache';
 import { generatePowerPoint, canGeneratePowerPoint } from '@/lib/services/powerpointService';
 import toast, { Toaster } from 'react-hot-toast';
+import ChatButton from '@/components/chat/ChatButton';
 
 // S3 이미지 컴포넌트
 const S3Image = memo(function S3Image({
@@ -968,6 +969,18 @@ export default function DashboardPage() {
                       프로필 설정
                     </span>
                   </Link>
+                  <Link
+                    href="/admin/chatbot"
+                    className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setIsProfileOpen(false)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      챗봇 관리
+                    </span>
+                  </Link>
                   <button onClick={() => signOut({ callbackUrl: '/auth/signin' })} className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">
                     <span className="flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1302,6 +1315,9 @@ export default function DashboardPage() {
         </section>
 
       </main>
+
+      {/* 챗봇 플로팅 버튼 */}
+      <ChatButton />
     </div>
   );
 }

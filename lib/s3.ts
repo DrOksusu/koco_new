@@ -12,9 +12,11 @@ const s3Client = new S3Client({
 export async function uploadToS3(
   file: Buffer,
   fileName: string,
-  contentType: string
+  contentType: string,
+  customKey?: string
 ): Promise<{ key: string; url: string }> {
-  const key = `uploads/${Date.now()}-${fileName}`;
+  // customKey가 제공되면 그대로 사용, 아니면 기본 경로 사용
+  const key = customKey || `uploads/${Date.now()}-${fileName}`;
 
   const command = new PutObjectCommand({
     Bucket: process.env.S3_BUCKET_NAME!,
