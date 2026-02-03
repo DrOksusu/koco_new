@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { imageCache } from '@/lib/imageCache';
 
+// 프로덕션 환경에서는 /new 경로 사용
+const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+
 interface ChatMedia {
   id: string;
   type: 'image' | 'video' | 'file';
@@ -77,7 +80,10 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat/send', {
+      console.log('🚀 Sending chat message:', userMessage.content);
+      console.log('🔗 API path:', `${basePath}/api/chat/send`);
+
+      const response = await fetch(`${basePath}/api/chat/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -86,8 +92,11 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
         })
       });
 
+      console.log('📥 Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Response data:', data);
         setSessionId(data.sessionId);
 
         const assistantMessage: ChatMessage = {
@@ -101,6 +110,8 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
         setMessages(prev => [...prev, assistantMessage]);
       } else {
         // 에러 응답
+        const errorData = await response.text();
+        console.error('❌ Error response:', response.status, errorData);
         setMessages(prev => [...prev, {
           id: `error-${Date.now()}`,
           role: 'assistant',
@@ -109,7 +120,7 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
         }]);
       }
     } catch (error) {
-      console.error('Chat error:', error);
+      console.error('❌ Chat fetch error:', error);
       setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
         role: 'assistant',

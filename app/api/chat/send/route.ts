@@ -25,11 +25,32 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id) {
+    console.log('Chat API - Session:', JSON.stringify(session, null, 2));
+
+    if (!session?.user) {
+      console.log('Chat API - No session user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = BigInt(session.user.id);
+    // session.user.id가 없으면 email로 사용자 조회
+    let userId: bigint;
+    if (session.user.id) {
+      userId = BigInt(session.user.id);
+    } else if (session.user.email) {
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email }
+      });
+      if (!user) {
+        console.log('Chat API - User not found by email');
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      userId = user.id;
+    } else {
+      console.log('Chat API - No user id or email');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    console.log('Chat API - User ID:', userId.toString());
     const body = await request.json();
     const { message, sessionId } = body;
 
@@ -125,8 +146,12 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Chat error:', error);
+    console.error('Chat error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json(
-      { error: 'Failed to process chat message' },
+      {
+        error: 'Failed to process chat message',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
