@@ -33,8 +33,37 @@ jobs:
           echo "${{ secrets.AWS_SSH_KEY }}" > aws_key.pem
           chmod 400 aws_key.pem
 
-      # 5. AWS 서버에 Docker 이미지 배포
-      - name: Deploy to AWS Server
+      # 5. Caddy 설정 파일 업데이트
+      - name: Update Caddy Configuration
+        run: |
+          # Caddyfile을 서버로 복사
+          scp -o StrictHostKeyChecking=no -i aws_key.pem caddy/Caddyfile ${{ secrets.AWS_USERNAME }}@${{ secrets.AWS_HOST }}:/tmp/Caddyfile
+
+          # Caddy 설정 업데이트 및 재시작
+          ssh -o StrictHostKeyChecking=no -i aws_key.pem ${{ secrets.AWS_USERNAME }}@${{ secrets.AWS_HOST }} << 'EOF'
+            echo "Updating Caddy configuration..."
+
+            # 백업 생성
+            sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || echo "No existing config to backup"
+
+            # 새 설정 파일 복사
+            sudo mv /tmp/Caddyfile /etc/caddy/Caddyfile
+
+            # Caddy 설정 검증
+            if sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile; then
+              echo "✓ Caddy configuration is valid"
+              # Caddy 재시작
+              sudo systemctl reload caddy || sudo systemctl restart caddy
+              echo "✓ Caddy reloaded successfully"
+            else
+              echo "✗ Caddy configuration test failed! Rolling back..."
+              sudo cp /etc/caddy/Caddyfile.backup.* /etc/caddy/Caddyfile 2>/dev/null
+              exit 1
+            fi
+          EOF
+
+      # 6. AWS 서버에 Docker 이미지 배포
+      - name: Deploy Docker to AWS Server
         run: |
           ssh -o StrictHostKeyChecking=no -i aws_key.pem ${{ secrets.AWS_USERNAME }}@${{ secrets.AWS_HOST }} << 'EOF'
             set -e  # Exit on any error
@@ -142,7 +171,7 @@ jobs:
             echo "=== Deployment completed successfully! ==="
           EOF
 
-      # 6. 배포 확인
+      # 7. 배포 확인
       - name: Verify Deployment
         run: |
           ssh -o StrictHostKeyChecking=no -i aws_key.pem ${{ secrets.AWS_USERNAME }}@${{ secrets.AWS_HOST }} << 'EOF'
@@ -175,7 +204,7 @@ jobs:
             echo "=== Deployment verification complete ==="
           EOF
 
-      # 7. AWS 키 파일 삭제
+      # 8. AWS 키 파일 삭제
       - name: Clean up
         if: always()
         run: rm -rf aws_key.pem

@@ -1,0 +1,49 @@
+watermark-api.koco.me {
+    reverse_proxy localhost:4000
+}
+
+koco.me, www.koco.me {
+    # /new -> Next.js Docker (port 3002)
+    handle /new/* {
+        reverse_proxy localhost:3002
+    }
+    handle /new {
+        reverse_proxy localhost:3002
+    }
+
+    # API proxy -> Next.js
+    handle /api/landmark/* {
+        uri replace /api/ /new/api/
+        reverse_proxy localhost:3002
+    }
+    handle /api/upload/* {
+        uri replace /api/ /new/api/
+        reverse_proxy localhost:3002
+    }
+    handle /api/s3/* {
+        uri replace /api/ /new/api/
+        reverse_proxy localhost:3002
+    }
+    handle /api/psa/* {
+        uri replace /api/ /new/api/
+        reverse_proxy localhost:3002
+    }
+    handle /api/pso/* {
+        uri replace /api/ /new/api/
+        reverse_proxy localhost:3002
+    }
+
+    # Page redirects to /new prefix
+    @pages path /dashboard* /history* /psa* /pso* /landmark* /auth*
+    redir @pages /new{uri} permanent
+
+    # /blog -> Django (port 8000)
+    handle /blog/* {
+        reverse_proxy localhost:8000
+    }
+
+    # Default -> Flask (port 9500)
+    handle {
+        reverse_proxy localhost:9500
+    }
+}
