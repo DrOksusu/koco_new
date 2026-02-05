@@ -69,7 +69,8 @@ jobs:
 
             # Docker Hub 로그인
             echo "Step 1: Docker Hub login..."
-            if docker login -u "${{ secrets.DOCKER_USERNAME }}" -p "${{ secrets.DOCKER_PASSWORD }}"; then
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            if [ $? -eq 0 ]; then
               echo "✓ Docker login successful"
             else
               echo "✗ Docker login failed"
