@@ -12,7 +12,7 @@
 
       location / {
           client_max_body_size 100M;
-          proxy_pass http://54.180.188.8:9500;
+          proxy_pass http://3.36.96.127:9500;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -38,13 +38,13 @@
 
       # Main Application (Flask - Port 9500)
       location / {
-          proxy_pass http://54.180.188.8:9500;
+          proxy_pass http://3.36.96.127:9500;
           proxy_set_header Host $host;
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto https;
 
-          proxy_redirect http://54.180.188.8:9500 https://koco.me;
+          proxy_redirect http://3.36.96.127:9500 https://koco.me;
       }
 
       # Django Blog
