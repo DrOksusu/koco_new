@@ -27,38 +27,11 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/koco_new:$(date +%Y%m%d)
           docker push ${{ secrets.DOCKER_USERNAME }}/koco_new:latest
 
-      # 4. Nginx 설정 파일 업데이트
-      - name: Update Nginx Configuration
+      # 4. SSH 키 설정
+      - name: Setup SSH Key
         run: |
           echo "${{ secrets.AWS_SSH_KEY }}" > aws_key.pem
           chmod 400 aws_key.pem
-
-          # nginx 설정 파일을 AWS 서버로 복사
-          scp -o StrictHostKeyChecking=no -i aws_key.pem nginx/koco.me ${{ secrets.AWS_USERNAME }}@${{ secrets.AWS_HOST }}:/tmp/koco.me
-
-          # nginx 설정 업데이트 및 재시작
-          ssh -o StrictHostKeyChecking=no -i aws_key.pem ${{ secrets.AWS_USERNAME }}@${{ secrets.AWS_HOST }} << 'EOF'
-            echo "Updating nginx configuration..."
-
-            # 백업 생성
-            sudo cp /etc/nginx/sites-available/koco.me /etc/nginx/sites-available/koco.me.backup.$(date +%Y%m%d_%H%M%S)
-
-            # 새 설정 파일 복사
-            sudo mv /tmp/koco.me /etc/nginx/sites-available/koco.me
-
-            # nginx 설정 테스트
-            sudo nginx -t
-
-            # nginx 재시작
-            if [ $? -eq 0 ]; then
-              sudo systemctl reload nginx
-              echo "Nginx configuration updated and reloaded successfully!"
-            else
-              echo "Nginx configuration test failed! Rolling back..."
-              sudo cp /etc/nginx/sites-available/koco.me.backup.$(date +%Y%m%d)* /etc/nginx/sites-available/koco.me
-              exit 1
-            fi
-          EOF
 
       # 5. AWS 서버에 Docker 이미지 배포
       - name: Deploy to AWS Server
