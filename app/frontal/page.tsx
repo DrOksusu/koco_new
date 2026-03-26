@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import MagnifierCanvas from '@/components/MagnifierCanvas';
 import GuideMessage from '@/components/GuideMessage';
+import { apiUrl } from '@/lib/api-client';
 
 // Frontal 랜드마크 정의 (11개)
 const FRONTAL_LANDMARKS = [
@@ -54,8 +55,8 @@ export default function FrontalAnalysisPage() {
   const [isReferencePopup, setIsReferencePopup] = useState(false);
   const [magnifierMessage, setMagnifierMessage] = useState(false);
 
-  // basePath 처리 (production에서는 /new 추가)
-  const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+  // 이미지 경로용 basePath (production에서는 /new 추가)
+  const imgBase = process.env.NODE_ENV === 'production' ? '/new' : '';
 
   // 세션 스토리지에서 데이터 로드
   useEffect(() => {
@@ -466,7 +467,7 @@ export default function FrontalAnalysisPage() {
       formData.append('type', 'frontal');
 
       console.log('📤 Uploading Frontal annotated image to S3...');
-      const uploadResponse = await fetch(`${basePath}/api/upload/file`, {
+      const uploadResponse = await fetch(apiUrl('/api/upload/file'), {
         method: 'POST',
         body: formData,
       });
@@ -491,7 +492,7 @@ export default function FrontalAnalysisPage() {
         originalFormData.append('file', originalBlob, `frontal_original_${Date.now()}.png`);
         originalFormData.append('type', 'frontal-original');
 
-        const originalUploadResponse = await fetch(`${basePath}/api/upload/file`, {
+        const originalUploadResponse = await fetch(apiUrl('/api/upload/file'), {
           method: 'POST',
           body: originalFormData,
         });
@@ -534,7 +535,7 @@ export default function FrontalAnalysisPage() {
 
     // 3. API로 DB에 저장
     try {
-      const response = await fetch(`${basePath}/api/frontal/save`, {
+      const response = await fetch(apiUrl('/api/frontal/save'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(analysisData)
@@ -682,12 +683,12 @@ export default function FrontalAnalysisPage() {
               {/* 참조 이미지 */}
               <div className="relative">
                 <img
-                  src={`${basePath}/images/landmarks/frontal_diagram.png`}
+                  src={`${imgBase}/images/landmarks/frontal_diagram.png`}
                   alt="Frontal Reference"
                   className="w-full object-contain cursor-pointer"
                   onDoubleClick={() => setIsReferencePopup(true)}
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = `${basePath}/images/placeholders/sample_frontal.jpg`;
+                    (e.target as HTMLImageElement).src = `${imgBase}/images/placeholders/sample_frontal.jpg`;
                   }}
                 />
                 <p className="text-xs text-gray-400 mt-1 text-center">
@@ -840,12 +841,12 @@ export default function FrontalAnalysisPage() {
         >
           <div className="relative max-w-[90vw] max-h-[90vh]">
             <img
-              src={`${basePath}/images/landmarks/frontal_diagram.png`}
+              src={`${imgBase}/images/landmarks/frontal_diagram.png`}
               alt="Frontal Reference"
               className="w-full h-full object-contain"
               style={{ transform: 'scale(1.1)' }}
               onError={(e) => {
-                (e.target as HTMLImageElement).src = `${basePath}/images/placeholders/sample_frontal.jpg`;
+                (e.target as HTMLImageElement).src = `${imgBase}/images/placeholders/sample_frontal.jpg`;
               }}
             />
             <button

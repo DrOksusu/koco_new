@@ -10,6 +10,7 @@ import { imageCache } from '@/lib/imageCache';
 import { generatePowerPoint, canGeneratePowerPoint } from '@/lib/services/powerpointService';
 import toast, { Toaster } from 'react-hot-toast';
 import ChatButton from '@/components/chat/ChatButton';
+import { apiUrl } from '@/lib/api-client';
 
 // S3 이미지 컴포넌트
 const S3Image = memo(function S3Image({
@@ -229,8 +230,6 @@ export default function DashboardPage() {
   const { clearAll } = useMeasurementStore();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-  const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
-
   // 엑스레이 이미지 상태 (3개 입력)
   const [panoramaImage, setPanoramaImage] = useState<string | null>(null);
   const [lateralCephImage, setLateralCephImage] = useState<string | null>(null);
@@ -324,13 +323,13 @@ export default function DashboardPage() {
 
         // sendBeacon으로 삭제 요청 (페이지 이탈 시에도 전송 보장)
         const blob = new Blob([JSON.stringify({ analysisId })], { type: 'application/json' });
-        navigator.sendBeacon(`${basePath}/api/analysis/delete`, blob);
+        navigator.sendBeacon(apiUrl('/api/analysis/delete'), blob);
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [basePath]);
+  }, []);
 
   // PDF 미리보기 URL 정리 (메모리 누수 방지)
   useEffect(() => {
@@ -483,7 +482,7 @@ export default function DashboardPage() {
     }
 
     try {
-      const response = await fetch(`${basePath}/api/analysis/update-photos`, {
+      const response = await fetch(apiUrl('/api/analysis/update-photos'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestData),
@@ -545,7 +544,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchClinicInfo = async () => {
       try {
-        const response = await fetch(`${basePath}/api/profile`);
+        const response = await fetch(apiUrl('/api/profile'));
         if (response.ok) {
           const data = await response.json();
           if (data.clinic) {
@@ -561,7 +560,7 @@ export default function DashboardPage() {
     if (status === 'authenticated') {
       fetchClinicInfo();
     }
-  }, [status, basePath]);
+  }, [status]);
 
   if (status === 'loading') {
     return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>;
@@ -609,7 +608,7 @@ export default function DashboardPage() {
       formData.append('userId', session?.user?.email || 'anonymous');
       formData.append('type', type);
 
-      const response = await fetch(`${basePath}/api/upload/file`, {
+      const response = await fetch(apiUrl('/api/upload/file'), {
         method: 'POST',
         body: formData,
       });
@@ -668,7 +667,7 @@ export default function DashboardPage() {
         if (!chartNumber) {
           // 새 분석: 차트번호 자동 생성
           try {
-            const response = await fetch(`${basePath}/api/analysis/create`, {
+            const response = await fetch(apiUrl('/api/analysis/create'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -702,7 +701,7 @@ export default function DashboardPage() {
         } else if (analysisId) {
           // 기존 분석: originalImageUrl만 업데이트
           try {
-            const response = await fetch(`${basePath}/api/analysis/update-photos`, {
+            const response = await fetch(apiUrl('/api/analysis/update-photos'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -775,7 +774,7 @@ export default function DashboardPage() {
     }
 
     try {
-      const response = await fetch(`${basePath}/api/s3/get-image`, {
+      const response = await fetch(apiUrl('/api/s3/get-image'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageUrl: s3Url })
@@ -821,10 +820,10 @@ export default function DashboardPage() {
     }
 
     const urls: Record<string, string> = {
-      LANDMARK: `${basePath}/landmark`,
-      PSA: `${basePath}/psa`,
-      PSO: `${basePath}/pso`,
-      FRONTAL: `${basePath}/frontal`,
+      LANDMARK: apiUrl('/landmark'),
+      PSA: apiUrl('/psa'),
+      PSO: apiUrl('/pso'),
+      FRONTAL: apiUrl('/frontal'),
     };
 
     const newWindow = window.open(urls[type], '_blank', 'width=1400,height=900');
@@ -846,7 +845,7 @@ export default function DashboardPage() {
     if (currentAnalysisId && !patientName.trim() && !hasImages && !hasResults) {
       try {
         console.log('🗑️ Deleting empty analysis before creating new one:', currentAnalysisId);
-        await fetch(`${basePath}/api/analysis/delete`, {
+        await fetch(apiUrl('/api/analysis/delete'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ analysisId: currentAnalysisId })
@@ -879,7 +878,7 @@ export default function DashboardPage() {
 
     // 새 분석 레코드 생성 및 차트번호 할당
     try {
-      const response = await fetch(`${basePath}/api/analysis/create`, {
+      const response = await fetch(apiUrl('/api/analysis/create'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1013,7 +1012,7 @@ export default function DashboardPage() {
                   image={panoramaImage}
                   onUpload={(f) => handleFileUpload(f, setPanoramaImage, 'panorama')}
                   onRemove={() => { if (panoramaImage?.startsWith('blob:')) URL.revokeObjectURL(panoramaImage); setPanoramaImage(null); }}
-                  placeholder={`${basePath}/images/placeholders/sample_pano.jpg`}
+                  placeholder={apiUrl('/images/placeholders/sample_pano.jpg')}
                 />
               </div>
 
@@ -1024,7 +1023,7 @@ export default function DashboardPage() {
                   image={lateralCephImage}
                   onUpload={(f) => handleFileUpload(f, setLateralCephImage, 'lateral_ceph')}
                   onRemove={() => { if (lateralCephImage?.startsWith('blob:')) URL.revokeObjectURL(lateralCephImage); setLateralCephImage(null); }}
-                  placeholder={`${basePath}/images/placeholders/sample_lateral.jpg`}
+                  placeholder={apiUrl('/images/placeholders/sample_lateral.jpg')}
                 />
               </div>
 
@@ -1067,22 +1066,22 @@ export default function DashboardPage() {
                   image={frontalCephImage}
                   onUpload={(f) => handleFileUpload(f, setFrontalCephImage, 'frontal_ceph')}
                   onRemove={() => { if (frontalCephImage?.startsWith('blob:')) URL.revokeObjectURL(frontalCephImage); setFrontalCephImage(null); }}
-                  placeholder={`${basePath}/images/placeholders/sample_frontal.jpg`}
+                  placeholder={apiUrl('/images/placeholders/sample_frontal.jpg')}
                 />
               </div>
 
               {/* 분석 결과 이미지들 */}
               <div className="w-32">
-                <ResultImageBox label="Landmarks" image={landmarkResult} labelColor="bg-green-400" placeholder={`${basePath}/images/placeholders/sample_lateral.jpg`} />
+                <ResultImageBox label="Landmarks" image={landmarkResult} labelColor="bg-green-400" placeholder={apiUrl('/images/placeholders/sample_lateral.jpg')} />
               </div>
               <div className="w-32">
-                <ResultImageBox label="PSA" image={psaResult} labelColor="bg-green-400" placeholder={`${basePath}/images/placeholders/sample_psa.jpg`} />
+                <ResultImageBox label="PSA" image={psaResult} labelColor="bg-green-400" placeholder={apiUrl('/images/placeholders/sample_psa.jpg')} />
               </div>
               <div className="w-32">
-                <ResultImageBox label="PSO" image={psoResult} labelColor="bg-green-400" placeholder={`${basePath}/images/placeholders/sample_pso.jpg`} />
+                <ResultImageBox label="PSO" image={psoResult} labelColor="bg-green-400" placeholder={apiUrl('/images/placeholders/sample_pso.jpg')} />
               </div>
               <div className="w-32">
-                <ResultImageBox label="Frontal Ax." image={frontalAxResult} labelColor="bg-green-400" placeholder={`${basePath}/images/placeholders/sample_frontal.jpg`} />
+                <ResultImageBox label="Frontal Ax." image={frontalAxResult} labelColor="bg-green-400" placeholder={apiUrl('/images/placeholders/sample_frontal.jpg')} />
               </div>
             </div>
           </div>
@@ -1103,7 +1102,7 @@ export default function DashboardPage() {
                   onUpload={(f) => handleArrayPhotoUpload(f, idx, extraoralPhotos, setExtraoralPhotos, 'extraoral')}
                   onRemove={() => handleArrayPhotoRemove(idx, extraoralPhotos, setExtraoralPhotos)}
                   labelColor="bg-yellow-400"
-                  placeholder={`${basePath}/images/placeholders/sample_photo${idx + 1}.jpg`}
+                  placeholder={apiUrl(`/images/placeholders/sample_photo${idx + 1}.jpg`)}
                 />
               ))}
             </div>
@@ -1125,7 +1124,7 @@ export default function DashboardPage() {
                   onUpload={(f) => handleArrayPhotoUpload(f, idx, intraoralPhotos, setIntraoralPhotos, 'intraoral')}
                   onRemove={() => handleArrayPhotoRemove(idx, intraoralPhotos, setIntraoralPhotos)}
                   labelColor="bg-yellow-400"
-                  placeholder={`${basePath}/images/placeholders/sample_oral${idx + 1}.jpg`}
+                  placeholder={apiUrl(`/images/placeholders/sample_oral${idx + 1}.jpg`)}
                 />
               ))}
             </div>
@@ -1147,7 +1146,7 @@ export default function DashboardPage() {
                   onUpload={(f) => handleArrayPhotoUpload(f, idx, posturePhotos, setPosturePhotos, 'posture')}
                   onRemove={() => handleArrayPhotoRemove(idx, posturePhotos, setPosturePhotos)}
                   labelColor="bg-yellow-400"
-                  placeholder={`${basePath}/images/placeholders/sample_posture${idx + 1}.jpg`}
+                  placeholder={apiUrl(`/images/placeholders/sample_posture${idx + 1}.jpg`)}
                 />
               ))}
             </div>
@@ -1169,7 +1168,7 @@ export default function DashboardPage() {
                   onUpload={(f) => handleArrayPhotoUpload(f, idx, additionalPosturePhotos, setAdditionalPosturePhotos, 'additional_posture')}
                   onRemove={() => handleArrayPhotoRemove(idx, additionalPosturePhotos, setAdditionalPosturePhotos)}
                   labelColor="bg-yellow-400"
-                  placeholder={`${basePath}/images/placeholders/sample_posture${idx + 5}.jpg`}
+                  placeholder={apiUrl(`/images/placeholders/sample_posture${idx + 5}.jpg`)}
                 />
               ))}
             </div>

@@ -5,9 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { imageCache } from '@/lib/imageCache';
-
-// basePath 처리 (production에서는 /new 추가)
-const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+import { apiUrl } from '@/lib/api-client';
 
 interface DiagnosisRecord {
   id: string;
@@ -179,7 +177,7 @@ export default function HistoryPage() {
 
   const fetchHistory = async () => {
     try {
-      const response = await fetch(`${basePath}/api/landmark/history`);
+      const response = await fetch(apiUrl('/api/landmark/history'));
       if (response.ok) {
         const data = await response.json();
         setDiagnoses(data.diagnoses || []);
@@ -292,7 +290,7 @@ export default function HistoryPage() {
     setIsDeleting(true);
 
     try {
-      const response = await fetch(`${basePath}/api/landmark/history/bulk-delete`, {
+      const response = await fetch(apiUrl('/api/landmark/history/bulk-delete'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: Array.from(selectedIds) })
@@ -602,7 +600,7 @@ export default function HistoryPage() {
                         // S3 URL이면 pre-signed URL 생성
                         if (imageUrl && imageUrl.includes('s3') && imageUrl.includes('amazonaws.com')) {
                           try {
-                            const response = await fetch(`${basePath}/api/s3/get-image`, {
+                            const response = await fetch(apiUrl('/api/s3/get-image'), {
                               method: 'POST',
                               headers: {
                                 'Content-Type': 'application/json',
@@ -633,7 +631,7 @@ export default function HistoryPage() {
                         console.log('Sending to dashboard with analysisId:', diagnosis.id, 'chartNumber:', diagnosis.chartNumber);
                         sessionStorage.setItem('analysisData', JSON.stringify(dataToSend));
                         // router.push 대신 window.location.href 사용하여 페이지 새로고침 보장
-                        window.location.href = `${basePath}/dashboard`;
+                        window.location.href = apiUrl('/dashboard');
                       }}
                       className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
                     >

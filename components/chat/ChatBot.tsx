@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { imageCache } from '@/lib/imageCache';
-
-// 프로덕션 환경에서는 /new 경로 사용
-const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+import { apiUrl } from '@/lib/api-client';
 
 interface ChatMedia {
   id: string;
@@ -81,9 +79,9 @@ export default function ChatBot({ isOpen, onClose }: ChatBotProps) {
 
     try {
       console.log('🚀 Sending chat message:', userMessage.content);
-      console.log('🔗 API path:', `${basePath}/api/chat/send`);
+      console.log('🔗 API path:', apiUrl('/api/chat/send'));
 
-      const response = await fetch(`${basePath}/api/chat/send`, {
+      const response = await fetch(apiUrl('/api/chat/send'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

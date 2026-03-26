@@ -4,9 +4,7 @@ import { signIn } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
-// basePath 처리 (production에서는 /new 추가)
-const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+import { apiUrl } from '@/lib/api-client';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -35,7 +33,7 @@ export default function SignUpPage() {
     setEmailLoading(true);
 
     try {
-      const response = await fetch(`${basePath}/api/auth/signup`, {
+      const response = await fetch(apiUrl('/api/auth/signup'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

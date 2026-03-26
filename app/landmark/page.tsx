@@ -11,6 +11,7 @@ import { useLandmarkData } from '@/lib/hooks/useLandmarkData';
 import { addCalculatedLandmarks } from '@/lib/calculations/intersectionCalculations';
 import { calculateAllAngles } from '@/lib/calculations/angleCalculations';
 import { calculateAllDistances } from '@/lib/calculations/distanceCalculations';
+import { apiUrl } from '@/lib/api-client';
 
 export default function LandmarkPage() {
   const router = useRouter();
@@ -29,9 +30,6 @@ export default function LandmarkPage() {
   const [isReEditMode, setIsReEditMode] = useState(false);
   const [analysisId, setAnalysisId] = useState<string>('');
   const currentLandmarkRef = useRef<HTMLDivElement>(null);
-
-  // basePath 처리 (production에서는 /new 추가)
-  const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
 
   // 페이지 로드 시 데이터 가져오기
   useEffect(() => {
@@ -84,7 +82,7 @@ export default function LandmarkPage() {
           if (data.imageUrl.includes('.s3.') || data.imageUrl.includes('s3.amazonaws.com')) {
             console.log('S3 URL detected, getting signed URL...');
             // S3 URL은 서명된 URL을 받을 때까지 기다림
-            fetch(`${basePath}/api/landmark/signed-url`, {
+            fetch(apiUrl('/api/landmark/signed-url'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ imageUrl: data.imageUrl })
@@ -324,7 +322,7 @@ export default function LandmarkPage() {
 
       // 2. S3에 랜드마크 이미지 업로드
       if (imageDataUrl) {
-        const uploadResponse = await fetch(`${basePath}/api/landmark/upload-image`, {
+        const uploadResponse = await fetch(apiUrl('/api/landmark/upload-image'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -352,7 +350,7 @@ export default function LandmarkPage() {
       if (originalImageUrl) {
         if (originalImageUrl.startsWith('data:') || originalImageUrl.startsWith('blob:')) {
           // data URL 또는 blob URL인 경우 업로드
-          const uploadOriginalResponse = await fetch(`${basePath}/api/landmark/upload-image`, {
+          const uploadOriginalResponse = await fetch(apiUrl('/api/landmark/upload-image'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -397,7 +395,7 @@ export default function LandmarkPage() {
       // 기존 분석 ID 가져오기 (있으면 업데이트, 없으면 생성)
       const existingAnalysisId = sessionStorage.getItem('analysisId');
 
-      const saveResponse = await fetch(`${basePath}/api/landmark/save`, {
+      const saveResponse = await fetch(apiUrl('/api/landmark/save'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -611,7 +609,7 @@ export default function LandmarkPage() {
               {/* 참조 이미지 */}
               <div className="relative">
                 <img
-                  src={`${basePath}/images/landmarks/landmark.png`}
+                  src={apiUrl('/images/landmarks/landmark.png')}
                   alt="Landmark Reference"
                   className="w-full object-contain cursor-pointer"
                   onDoubleClick={() => setIsReferencePopup(true)}
@@ -753,7 +751,7 @@ export default function LandmarkPage() {
         >
           <div className="relative max-w-[90vw] max-h-[90vh]">
             <img
-              src={`${basePath}/images/landmarks/landmark.png`}
+              src={apiUrl('/images/landmarks/landmark.png')}
               alt="Landmark Reference"
               className="w-full h-full object-contain"
               style={{ transform: 'scale(1.1)' }}

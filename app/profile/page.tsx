@@ -6,9 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import S3Image from '@/components/common/S3Image';
-
-// basePath 처리 (production에서는 /new 추가)
-const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+import { apiUrl } from '@/lib/api-client';
 
 interface ProfileData {
   user: {
@@ -65,7 +63,7 @@ export default function ProfilePage() {
   const fetchProfile = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${basePath}/api/profile`);
+      const response = await fetch(apiUrl('/api/profile'));
       console.log('Profile response status:', response.status);
       const responseText = await response.text();
       console.log('Profile response text:', responseText);
@@ -101,7 +99,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const response = await fetch(`${basePath}/api/profile`, {
+      const response = await fetch(apiUrl('/api/profile'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -180,7 +178,7 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append('logo', file);
 
-      const response = await fetch(`${basePath}/api/profile/upload-logo`, {
+      const response = await fetch(apiUrl('/api/profile/upload-logo'), {
         method: 'POST',
         body: formData,
       });

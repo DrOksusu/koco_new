@@ -6,6 +6,7 @@ import PSACanvas from '@/components/PSACanvas';
 import MagnifierCanvas from '@/components/MagnifierCanvas';
 import GuideMessage from '@/components/GuideMessage';
 import { calculateScaleFactor } from '@/lib/calculations/distanceCalculations';
+import { apiUrl } from '@/lib/api-client';
 
 // PSA 랜드마크 정의 (6개)
 const PSA_LANDMARKS = [
@@ -37,8 +38,8 @@ export default function PSAAnalysisPage() {
   const [guideZone, setGuideZone] = useState<number | null>(null);
   const [bufferZone, setBufferZone] = useState<number | null>(null);
 
-  // basePath 처리 (production에서는 /new 추가)
-  const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+  // 이미지 경로용 basePath (production에서는 /new 추가)
+  const imgBase = process.env.NODE_ENV === 'production' ? '/new' : '';
 
   // 세션 스토리지에서 데이터 로드
   useEffect(() => {
@@ -426,7 +427,7 @@ export default function PSAAnalysisPage() {
     // S3에 PSA 이미지 업로드
     if (imageDataUrl) {
       try {
-        const uploadResponse = await fetch(`${basePath}/api/psa/upload-image`, {
+        const uploadResponse = await fetch(apiUrl('/api/psa/upload-image'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -479,7 +480,7 @@ export default function PSAAnalysisPage() {
 
     // API로 저장 (먼저 DB에 저장)
     try {
-      const response = await fetch(`${basePath}/api/psa/save`, {
+      const response = await fetch(apiUrl('/api/psa/save'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(analysisData)
@@ -568,7 +569,7 @@ export default function PSAAnalysisPage() {
               {/* 참조 이미지 */}
               <div className="relative">
                 <img
-                  src={`${basePath}/images/landmarks/psa_diagram.png`}
+                  src={`${imgBase}/images/landmarks/psa_diagram.png`}
                   alt="PSA Reference"
                   className="w-full object-contain cursor-pointer"
                   onDoubleClick={() => setIsReferencePopup(true)}
@@ -728,7 +729,7 @@ export default function PSAAnalysisPage() {
         >
           <div className="relative max-w-[90vw] max-h-[90vh]">
             <img
-              src={`${basePath}/images/landmarks/psa_diagram.png`}
+              src={`${imgBase}/images/landmarks/psa_diagram.png`}
               alt="PSA Reference"
               className="w-full h-full object-contain"
               style={{ transform: 'scale(1.1)' }}

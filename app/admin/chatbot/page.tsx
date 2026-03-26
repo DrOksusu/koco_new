@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
+import { apiUrl } from '@/lib/api-client';
 
 interface ChatMedia {
   id: string;
@@ -68,7 +69,7 @@ export default function ChatbotAdminPage() {
   useEffect(() => {
     const fetchRules = async () => {
       try {
-        const response = await fetch('/api/chat/rules');
+        const response = await fetch(apiUrl('/api/chat/rules'));
         if (response.ok) {
           const data = await response.json();
           setRules(data.rules);
@@ -87,7 +88,7 @@ export default function ChatbotAdminPage() {
   useEffect(() => {
     const fetchMedia = async () => {
       try {
-        const response = await fetch('/api/chat/media');
+        const response = await fetch(apiUrl('/api/chat/media'));
         if (response.ok) {
           const data = await response.json();
           setMediaList(data.media);
@@ -110,7 +111,7 @@ export default function ChatbotAdminPage() {
     }
 
     try {
-      const response = await fetch('/api/chat/rules', {
+      const response = await fetch(apiUrl('/api/chat/rules'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRule)
@@ -141,7 +142,7 @@ export default function ChatbotAdminPage() {
     if (!confirm('이 룰을 삭제하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`/api/chat/rules?id=${id}`, {
+      const response = await fetch(apiUrl(`/api/chat/rules?id=${id}`), {
         method: 'DELETE'
       });
 
@@ -159,7 +160,7 @@ export default function ChatbotAdminPage() {
   // 룰 활성화/비활성화 토글
   const handleToggleRule = async (rule: ChatRule) => {
     try {
-      const response = await fetch('/api/chat/rules', {
+      const response = await fetch(apiUrl('/api/chat/rules'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -194,7 +195,7 @@ export default function ChatbotAdminPage() {
       formData.append('description', newMedia.description);
       formData.append('mediaType', newMedia.mediaType);
 
-      const response = await fetch('/api/chat/media', {
+      const response = await fetch(apiUrl('/api/chat/media'), {
         method: 'POST',
         body: formData
       });
@@ -225,7 +226,7 @@ export default function ChatbotAdminPage() {
     if (!confirm('이 미디어를 삭제하시겠습니까?')) return;
 
     try {
-      const response = await fetch(`/api/chat/media?id=${id}`, {
+      const response = await fetch(apiUrl(`/api/chat/media?id=${id}`), {
         method: 'DELETE'
       });
 

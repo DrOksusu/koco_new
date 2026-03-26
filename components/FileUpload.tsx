@@ -36,8 +36,8 @@ export default function FileUpload({
   const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // basePath for images (production: /new, development: '')
-  const basePath = process.env.NODE_ENV === 'production' ? '/new' : '';
+  // 이미지 자산 경로용 basePath
+  const assetBase = process.env.NODE_ENV === 'production' ? '/new' : '';
 
   const validateFiles = (files: FileList | null): File[] => {
     if (!files) return [];
@@ -145,7 +145,7 @@ export default function FileUpload({
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url(${placeholderImage || `${basePath}/images/placeholders/sample_lateral.jpg`})`,
+              backgroundImage: `url(${placeholderImage || `${assetBase}/images/placeholders/sample_lateral.jpg`})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
