@@ -3,7 +3,13 @@ watermark-api.koco.me {
 }
 
 koco.me, www.koco.me {
-    # /new -> Next.js Docker (port 3002)
+    # /new/api/* -> koco-api Express (port 3003)
+    # 반드시 /new/* 보다 먼저 배치 (Caddy는 첫 매칭 우선)
+    handle /new/api/* {
+        reverse_proxy localhost:3003
+    }
+
+    # /new/* -> Next.js Docker (port 3002) — 페이지만
     handle /new/* {
         reverse_proxy localhost:3002
     }
@@ -11,26 +17,26 @@ koco.me, www.koco.me {
         reverse_proxy localhost:3002
     }
 
-    # API proxy -> Next.js
+    # /api/* -> koco-api (uri rewrite 후 전달)
     handle /api/landmark/* {
         uri replace /api/ /new/api/
-        reverse_proxy localhost:3002
+        reverse_proxy localhost:3003
     }
     handle /api/upload/* {
         uri replace /api/ /new/api/
-        reverse_proxy localhost:3002
+        reverse_proxy localhost:3003
     }
     handle /api/s3/* {
         uri replace /api/ /new/api/
-        reverse_proxy localhost:3002
+        reverse_proxy localhost:3003
     }
     handle /api/psa/* {
         uri replace /api/ /new/api/
-        reverse_proxy localhost:3002
+        reverse_proxy localhost:3003
     }
     handle /api/pso/* {
         uri replace /api/ /new/api/
-        reverse_proxy localhost:3002
+        reverse_proxy localhost:3003
     }
 
     # Page redirects to /new prefix
