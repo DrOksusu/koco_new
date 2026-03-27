@@ -3,19 +3,28 @@ watermark-api.koco.me {
 }
 
 koco.me, www.koco.me {
-    # NextAuth 경로 → Next.js (session, callback, signin, signout, error, csrf, providers)
-    # koco-api의 /auth/login, /auth/signup, /auth/refresh, /auth/me 와 구분
-    @nextauth path /new/api/auth/session /new/api/auth/session/* /new/api/auth/callback/* /new/api/auth/signin /new/api/auth/signin/* /new/api/auth/signout /new/api/auth/signout/* /new/api/auth/error /new/api/auth/csrf /new/api/auth/providers
+    # ── API 라우팅 ──
+
+    # NextAuth → Next.js (OAuth callback, session 등)
+    @nextauth path /new/api/auth/session* /new/api/auth/callback* /new/api/auth/signin* /new/api/auth/signout* /new/api/auth/error /new/api/auth/csrf /new/api/auth/providers
     handle @nextauth {
         reverse_proxy localhost:3002
     }
 
-    # /new/api/* → koco-api Express (port 3003)
+    # /new/api/* → koco-api
     handle /new/api/* {
         reverse_proxy localhost:3003
     }
 
-    # /new/* -> Next.js Docker (port 3002) — 페이지만
+    # /api/* → rewrite → koco-api (레거시 호환)
+    handle /api/* {
+        uri replace /api/ /new/api/
+        reverse_proxy localhost:3003
+    }
+
+    # ── 페이지 라우팅 ──
+
+    # /new/* → Next.js
     handle /new/* {
         reverse_proxy localhost:3002
     }
@@ -23,38 +32,16 @@ koco.me, www.koco.me {
         reverse_proxy localhost:3002
     }
 
-    # /api/* -> koco-api (uri rewrite 후 전달)
-    handle /api/landmark/* {
-        uri replace /api/ /new/api/
-        reverse_proxy localhost:3003
-    }
-    handle /api/upload/* {
-        uri replace /api/ /new/api/
-        reverse_proxy localhost:3003
-    }
-    handle /api/s3/* {
-        uri replace /api/ /new/api/
-        reverse_proxy localhost:3003
-    }
-    handle /api/psa/* {
-        uri replace /api/ /new/api/
-        reverse_proxy localhost:3003
-    }
-    handle /api/pso/* {
-        uri replace /api/ /new/api/
-        reverse_proxy localhost:3003
-    }
-
-    # Page redirects to /new prefix
+    # 짧은 경로 → /new 리다이렉트
     @pages path /dashboard* /history* /psa* /pso* /landmark* /auth*
     redir @pages /new{uri} permanent
 
-    # /blog -> Django (port 8000)
+    # /blog → Django
     handle /blog/* {
         reverse_proxy localhost:8000
     }
 
-    # Default -> Flask (port 9500)
+    # 기본 → Flask
     handle {
         reverse_proxy localhost:9500
     }
